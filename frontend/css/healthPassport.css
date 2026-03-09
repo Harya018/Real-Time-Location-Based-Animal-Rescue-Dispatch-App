@@ -1,0 +1,103 @@
+/* =================================================
+   HEALTH PASSPORT CARD STYLES
+   ================================================= */
+.passport-content {
+  max-width: 550px;
+}
+
+.passport-card {
+  perspective: 1000px;
+}
+
+.passport-front {
+  backface-visibility: hidden;
+}
+
+.passport-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+.passport-header h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.passport-form .form-group {
+  margin-bottom: var(--space-md);
+}
+
+/* Treatment Timeline */
+.treatment-timeline {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--bg-glass);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.treatment-timeline h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-left: 2px solid var(--accent-primary);
+  margin-left: 6px;
+  animation: antigravityFloat 3s ease-in-out infinite;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-primary-glow);
+}
+.timeline-item h5 {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.timeline-item p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.timeline-item .timeline-date {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.timeline-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: var(--space-md);
+}
+
+/* Anti-gravity progress bar (fills upward) */
+.health-progress {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: var(--radius-full);
+  margin-top: var(--space-sm);
+  overflow: hidden;
+  transform: rotate(180deg);
+}
+.health-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--gradient-success);
+  transition: width 1s ease-out;
+}

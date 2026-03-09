@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Animal Rescue Dispatch Platform — real-time rescue coordination with anti-gravity UI" />
+  <title>🐾 PawGuard — Animal Rescue Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/particles.css" />
+  <link rel="stylesheet" href="css/splash.css" />
+  <link rel="stylesheet" href="css/citizen.css" />
+  <link rel="stylesheet" href="css/rescuer.css" />
+  <link rel="stylesheet" href="css/healthPassport.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/profile.css" />
+</head>
+<body>
+  <!-- ============ SPLASH SCREEN ============ -->
+  <div id="splash-screen" class="screen active">
+    <canvas id="splash-particles"></canvas>
+    <div class="splash-content">
+      <div class="portal-glow"></div>
+      <div class="splash-logo antigravity-float">
+        <span class="logo-icon">🐾</span>
+        <h1 class="logo-text">PawGuard</h1>
+        <p class="logo-tagline">Every Second Counts</p>
+      </div>
+      <div class="splash-animals">
+        <span class="floating-animal" style="--delay:0s;--x:-60px;--y:-20px">🐕</span>
+        <span class="floating-animal" style="--delay:0.5s;--x:40px;--y:30px">🐈</span>
+        <span class="floating-animal" style="--delay:1s;--x:-30px;--y:50px">🐦</span>
+        <span class="floating-animal" style="--delay:1.5s;--x:70px;--y:-40px">🐢</span>
+        <span class="floating-animal" style="--delay:0.7s;--x:20px;--y:10px">🐇</span>
+        <span class="floating-animal" style="--delay:2.2s;--x:-50px;--y:80px">🐹</span>
+      </div>
+      <div class="energy-bar">
+        <div class="energy-fill" id="energy-fill"></div>
+      </div>
+      <div class="splash-status" id="splash-status">Initializing Neural Network...</div>
+    </div>
+  </div>
+
+  <!-- ============ ROLE SELECT ============ -->
+  <div id="role-screen" class="screen">
+    <canvas id="role-particles"></canvas>
+    <div class="role-content">
+      <h2 class="antigravity-float">Who are you?</h2>
+      <div class="role-cards">
+        <div class="role-card magnetic-btn" id="btn-citizen" data-role="citizen">
+          <div class="role-card-glow"></div>
+          <span class="role-icon">🧑‍🤝‍🧑</span>
+          <h3>Citizen</h3>
+          <p>Report animals in distress</p>
+        </div>
+        <div class="role-card magnetic-btn" id="btn-rescuer" data-role="rescuer">
+          <div class="role-card-glow"></div>
+          <span class="role-icon">🦸</span>
+          <h3>Rescuer</h3>
+          <p>Accept & respond to rescues</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CITIZEN HOME SCREEN ============ -->
+  <div id="citizen-screen" class="screen">
+    <!-- MAP VIEW (default) -->
+    <div id="citizen-map-view" class="citizen-view active-view">
+      <div id="citizen-map" class="map-container"></div>
+      <div class="map-overlay-gradient"></div>
+
+      <!-- Dashboard UI Layer (Always visible over map) -->
+      <div class="dashboard-ui-layer">
+        <!-- Floating Stats Bar -->
+        <div class="stats-bar antigravity-float" style="--delay:0.2s">
+          <div class="stat-pill">
+            <span class="stat-dot live"></span>
+            <span id="online-rescuers">0</span> Rescuers Online
+          </div>
+          <div class="stat-pill">
+            <span class="stat-dot warning"></span>
+            <span id="active-requests">0</span> Active Rescues
+          </div>
+        </div>
+
+        <!-- Floating Incident Cards -->
+        <div id="incident-cards" class="incident-cards-container"></div>
+
+        <!-- SOS Button -->
+        <div class="sos-container">
+          <div class="sos-ripple"></div>
+          <div class="sos-ripple delay"></div>
+          <button id="sos-button" class="sos-button magnetic-btn">
+            <span class="sos-icon">🐾</span>
+            <span class="sos-text">SOS</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY VIEW -->
+    <div id="citizen-history-view" class="citizen-view" style="display:none">
+      <div class="panel-container">
+        <h2 class="panel-title antigravity-float">📋 Rescue History</h2>
+        <div id="citizen-history-list" class="history-list">
+          <div class="empty-state">
+            <span class="empty-icon antigravity-float">📭</span>
+            <p>No rescue history yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE VIEW -->
+    <div id="citizen-profile-view" class="citizen-view" style="display:none">
+      <div class="panel-container">
+        <div class="profile-card glass antigravity-float">
+          <div class="profile-avatar">🧑‍🤝‍🧑</div>
+          <h2 class="profile-name" id="citizen-profile-name">Citizen</h2>
+          <p class="profile-role">🐾 Animal Rescuer</p>
+          <div class="profile-id" id="citizen-profile-id"></div>
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <span class="profile-stat-value" id="citizen-sos-count">0</span>
+              <span class="profile-stat-label">SOS Sent</span>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-value" id="citizen-rescued-count">0</span>
+              <span class="profile-stat-label">Rescued</span>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-value" id="citizen-active-count">0</span>
+              <span class="profile-stat-label">Active</span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-section glass">
+          <h3>⚙️ Settings</h3>
+          <div class="setting-row">
+            <span>📍 Location Sharing</span>
+            <label class="gravity-switch mini">
+              <input type="checkbox" checked />
+              <span class="gravity-switch-slider"><span class="switch-orb"></span></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span>🔔 Notifications</span>
+            <label class="gravity-switch mini">
+              <input type="checkbox" checked />
+              <span class="gravity-switch-slider"><span class="switch-orb"></span></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="bottom-nav glass" id="citizen-nav">
+      <button class="nav-btn active" data-view="map"><span>🗺️</span>Map</button>
+      <button class="nav-btn" data-view="history"><span>📋</span>History</button>
+      <button class="nav-btn" data-view="passport"><span>💊</span>Health</button>
+      <button class="nav-btn" data-view="profile"><span>👤</span>Profile</button>
+    </nav>
+  </div>
+
+  <!-- ============ RESCUER MODE SCREEN ============ -->
+  <div id="rescuer-screen" class="screen">
+    <!-- REQUESTS VIEW (default) -->
+    <div id="rescuer-requests-view" class="rescuer-view active-view">
+      <div class="rescuer-layout">
+        <!-- Top: Live Map -->
+        <div class="rescuer-map-section">
+          <div id="rescuer-map" class="map-container"></div>
+          <div class="map-overlay-gradient bottom"></div>
+          <div class="availability-toggle-container">
+            <label class="gravity-switch" id="availability-toggle">
+              <input type="checkbox" id="rescuer-available" />
+              <span class="gravity-switch-slider">
+                <span class="switch-orb"></span>
+              </span>
+              <span class="switch-label" id="switch-label">Offline</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Bottom: Incoming Requests -->
+        <div class="rescuer-requests-section">
+          <h3 class="section-title antigravity-float">
+            <span class="pulse-dot"></span>
+            Incoming Requests
+          </h3>
+          <div id="incoming-requests" class="requests-list"></div>
+          <div id="no-requests" class="empty-state">
+            <span class="empty-icon antigravity-float">🛰️</span>
+            <p>Scanning for distress signals...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESCUER MAP FULLSCREEN VIEW -->
+    <div id="rescuer-fullmap-view" class="rescuer-view" style="display:none">
+      <div id="rescuer-fullmap" class="map-container" style="width:100%;height:100%"></div>
+      <div class="map-overlay-gradient"></div>
+    </div>
+
+    <!-- RESCUER HISTORY VIEW -->
+    <div id="rescuer-history-view" class="rescuer-view" style="display:none">
+      <div class="panel-container">
+        <h2 class="panel-title antigravity-float">📋 Completed Rescues</h2>
+        <div id="rescuer-history-list" class="history-list">
+          <div class="empty-state">
+            <span class="empty-icon antigravity-float">🏆</span>
+            <p>No completed rescues yet</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESCUER PROFILE VIEW -->
+    <div id="rescuer-profile-view" class="rescuer-view" style="display:none">
+      <div class="panel-container">
+        <div class="profile-card glass antigravity-float">
+          <div class="profile-avatar">🦸</div>
+          <h2 class="profile-name" id="rescuer-profile-name">Rescuer</h2>
+          <p class="profile-role">🛡️ Animal Guardian</p>
+          <div class="profile-id" id="rescuer-profile-id"></div>
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <span class="profile-stat-value" id="rescuer-completed-count">0</span>
+              <span class="profile-stat-label">Completed</span>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-value" id="rescuer-response-time">--</span>
+              <span class="profile-stat-label">Avg Response</span>
+            </div>
+            <div class="profile-stat">
+              <span class="profile-stat-value" id="rescuer-rating">⭐ 5.0</span>
+              <span class="profile-stat-label">Rating</span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-section glass">
+          <h3>⚙️ Settings</h3>
+          <div class="setting-row">
+            <span>📍 Location Sharing</span>
+            <label class="gravity-switch mini">
+              <input type="checkbox" checked />
+              <span class="gravity-switch-slider"><span class="switch-orb"></span></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span>🔔 Push Alerts</span>
+            <label class="gravity-switch mini">
+              <input type="checkbox" checked />
+              <span class="gravity-switch-slider"><span class="switch-orb"></span></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="bottom-nav glass" id="rescuer-nav">
+      <button class="nav-btn active" data-view="requests"><span>📡</span>Requests</button>
+      <button class="nav-btn" data-view="map"><span>🗺️</span>Map</button>
+      <button class="nav-btn" data-view="history"><span>📋</span>Completed</button>
+      <button class="nav-btn" data-view="profile"><span>👤</span>Profile</button>
+    </nav>
+  </div>
+
+  <!-- ============ SOS MODAL ============ -->
+  <div id="sos-modal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass antigravity-float">
+      <div class="modal-header">
+        <h2>🚨 Report Emergency</h2>
+        <button class="modal-close" id="sos-modal-close">✕</button>
+      </div>
+      <form id="sos-form" class="sos-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Animal Type</label>
+            <select id="sos-animal-type">
+              <option value="dog">🐕 Dog</option>
+              <option value="cat">🐈 Cat</option>
+              <option value="bird">🐦 Bird</option>
+              <option value="other">🐾 Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Severity</label>
+            <select id="sos-severity" class="severity-select">
+              <option value="critical" class="critical">🔴 Critical</option>
+              <option value="moderate" selected class="moderate">🟡 Moderate</option>
+              <option value="stable" class="stable">🟢 Stable</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Photo Upload</label>
+          <div class="photo-upload-container glass" id="photo-upload-btn">
+            <input type="file" id="sos-photo-input" accept="image/*" hidden />
+            <div class="photo-placeholder">
+              <span class="upload-icon">📸</span>
+              <p>Click to upload animal photo</p>
+            </div>
+            <img id="photo-preview" class="photo-preview-img" style="display:none" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="sos-description">Description</label>
+          <textarea id="sos-description" placeholder="What happened? e.g. Leg injury, stuck in drain..." rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>📍 Location Mode</label>
+          <div class="location-toggle glass">
+            <button type="button" class="loc-tab active" data-mode="auto">Auto-Detect</button>
+            <button type="button" class="loc-tab" data-mode="manual">Manual Entry</button>
+          </div>
+          <div id="manual-location-group" style="display:none; margin-top: 10px;">
+            <input type="text" id="manual-address" placeholder="Enter landmark or street name..." />
+          </div>
+          <p class="location-preview" id="sos-location">Detecting your location...</p>
+        </div>
+
+        <div class="form-group">
+          <label class="priority-toggle-label">
+            <span class="pulse-dot red"></span>
+            <strong>High Priority Rescue</strong>
+            <label class="gravity-switch mini">
+              <input type="checkbox" id="sos-priority" />
+              <span class="gravity-switch-slider"><span class="switch-orb"></span></span>
+            </label>
+          </label>
+          <p class="priority-hint">🚨 Use only for life-threatening emergencies</p>
+        </div>
+
+        <button type="submit" class="btn-primary btn-glow magnetic-btn">
+          <span>🚀</span> Send Rescue Signal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ TRACKING MODAL ============ -->
+  <div id="tracking-modal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass tracking-content">
+      <div class="tracking-header">
+        <h2>🛤️ Rescuer En Route</h2>
+        <div class="eta-display antigravity-float">
+          <span class="eta-number" id="tracking-eta">--</span>
+          <span class="eta-label">min ETA</span>
+        </div>
+      </div>
+      <div id="tracking-map" class="tracking-map"></div>
+      <div class="tracking-info">
+        <div class="rescuer-info glass">
+          <span class="rescuer-avatar">🦸</span>
+          <div>
+            <strong id="tracking-rescuer-name">Rescuer</strong>
+            <p id="tracking-distance">Calculating...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HEALTH PASSPORT MODAL ============ -->
+  <div id="passport-modal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass passport-content">
+      <div class="passport-card">
+        <div class="passport-front">
+          <div class="passport-header">
+            <h2>🏥 Animal Health Passport</h2>
+            <button class="modal-close" id="passport-modal-close">✕</button>
+          </div>
+          <form id="passport-form" class="passport-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Animal Type</label>
+                <input type="text" id="passport-animal-type" placeholder="e.g. Dog, Cat..." />
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select id="passport-status">
+                  <option value="in_treatment">In Treatment</option>
+                  <option value="recovered">Recovered</option>
+                  <option value="transferred">Transferred</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Vet Notes</label>
+              <textarea id="passport-vet-notes" placeholder="Diagnosis and treatment notes..." rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Rehab Center</label>
+              <input type="text" id="passport-rehab" placeholder="Center name..." />
+            </div>
+            <div class="treatment-timeline" id="treatment-timeline">
+              <h4>Treatment Timeline</h4>
+              <div class="timeline-empty">No treatments recorded yet</div>
+            </div>
+            <button type="submit" class="btn-primary btn-glow magnetic-btn">
+              <span>💾</span> Save Passport
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/gh/somanchiu/Keyless-Google-Maps-API@v7.1/mapsJavaScriptAPI.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/antiGravity.js"></script>
+  <script src="js/mapManager.js"></script>
+  <script src="js/socketClient.js"></script>
+  <script src="js/citizenMode.js"></script>
+  <script src="js/rescuerMode.js"></script>
+  <script src="js/healthPassport.js"></script>
+  <script src="js/profileHistory.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+/* =================================================
+   PROFILE & HISTORY PANEL STYLES
+   ================================================= */
+
+/* Panel Container */
+.panel-container {
+  padding: var(--space-lg);
+  padding-top: var(--space-xl);
+  padding-bottom: 80px;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+.panel-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: var(--space-lg);
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* View Management */
+.citizen-view,
+.rescuer-view {
+  position: absolute;
+  inset: 0;
+  bottom: 52px;
+}
+.citizen-view.active-view,
+.rescuer-view.active-view {
+  display: flex !important;
+  flex-direction: column;
+  animation: viewFadeIn 0.3s ease-out;
+}
+
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============ PROFILE CARD ============ */
+.profile-card {
+  text-align: center;
+  padding: var(--space-xl) var(--space-lg);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-lg);
+  background: var(--gradient-card);
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+.profile-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-hero);
+}
+
+.profile-avatar {
+  font-size: 4rem;
+  margin-bottom: var(--space-md);
+  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
+}
+
+.profile-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: var(--space-xs);
+}
+
+.profile-role {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.profile-id {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-xs) var(--space-md);
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: var(--radius-full);
+  display: inline-block;
+}
+
+.profile-stats {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+}
+
+.profile-stat {
+  flex: 1;
+  text-align: center;
+  padding: var(--space-md);
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: var(--transition-normal);
+}
+.profile-stat:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--accent-primary-glow);
+  transform: translateY(-2px);
+}
+
+.profile-stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 2px;
+}
+
+.profile-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+/* ============ SETTINGS SECTION ============ */
+.profile-section {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: var(--space-md);
+}
+.profile-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+  color: var(--text-primary);
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.setting-row:last-child { border-bottom: none; }
+
+.gravity-switch.mini .gravity-switch-slider {
+  width: 40px;
+  height: 22px;
+}
+.gravity-switch.mini .switch-orb {
+  width: 14px;
+  height: 14px;
+}
+.gravity-switch.mini input:checked + .gravity-switch-slider .switch-orb {
+  left: 20px;
+}
+
+/* ============ HISTORY LIST ============ */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: var(--transition-normal);
+  animation: cardSlideIn 0.4s ease-out both;
+  cursor: pointer;
+}
+.history-item:hover {
+  transform: translateX(4px);
+  border-color: var(--accent-primary-glow);
+}
+
+.history-severity-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.history-severity-dot.critical { background: var(--accent-danger); box-shadow: 0 0 8px var(--accent-danger-glow); }
+.history-severity-dot.moderate { background: var(--accent-warning); box-shadow: 0 0 8px rgba(245,158,11,0.4); }
+.history-severity-dot.stable   { background: var(--accent-success); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+
+.history-details {
+  flex: 1;
+  min-width: 0;
+}
+.history-details h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-details p {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.history-meta {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.history-status {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  align-self: center;
+}
+.history-status.pending   { background: rgba(245,158,11,0.2); color: var(--accent-warning); }
+.history-status.accepted  { background: rgba(99,102,241,0.2); color: var(--accent-primary); }
+.history-status.rescued   { background: rgba(16,185,129,0.2); color: var(--accent-success); }
+
+/* Badge */
+.badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+.badge-critical { background: var(--accent-danger); color: white; }
+.badge-moderate { background: var(--accent-warning); color: #000; }
+.badge-stable   { background: var(--accent-success); color: white; }

@@ -3,24 +3,32 @@
 // =================================================
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/database');
+const { db, generateId } = require('../config/database');
 
 // POST /api/auth/login - Mock OTP Login (upserts user)
-router.post('/login', async (req, res) => {
+router.post('/login', (req, res) => {
   const { phone, role, name } = req.body;
   if (!phone) return res.status(400).json({ error: 'Phone is required' });
 
   try {
-    const result = await pool.query(
-      `INSERT INTO users (phone, role, name, trust_score)
-       VALUES ($1, $2, $3, 1.0)
-       ON CONFLICT (phone) DO UPDATE SET last_active = NOW()
-       RETURNING id, role, phone, name, trust_score`,
-      [phone, role || 'citizen', name || null]
-    );
+    // Check if user already exists
+    const existing = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
+
+    let user;
+    if (existing) {
+      db.prepare('UPDATE users SET last_active = datetime(\'now\') WHERE phone = ?').run(phone);
+      user = db.prepare('SELECT id, role, phone, name, trust_score FROM users WHERE phone = ?').get(phone);
+    } else {
+      const id = generateId();
+      db.prepare(
+        'INSERT INTO users (id, phone, role, name, trust_score) VALUES (?, ?, ?, ?, 1.0)'
+      ).run(id, phone, role || 'citizen', name || null);
+      user = { id, role: role || 'citizen', phone, name: name || null, trust_score: 1.0 };
+    }
+
     res.json({
-      user: result.rows[0],
-      token: 'mock-jwt-' + result.rows[0].id,
+      user,
+      token: 'mock-jwt-' + user.id,
     });
   } catch (err) {
     console.error('[Auth] Login error:', err.message);
@@ -29,15 +37,14 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/auth/user/:id - Get user profile
-router.get('/user/:id', async (req, res) => {
+router.get('/user/:id', (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, role, phone, name, is_available, trust_score, created_at
-       FROM users WHERE id = $1`,
-      [req.params.id]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json(result.rows[0]);
+    const user = db.prepare(
+      'SELECT id, role, phone, name, is_available, trust_score, created_at FROM users WHERE id = ?'
+    ).get(req.params.id);
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
   } catch (err) {
     console.error('[Auth] Get user error:', err.message);
     res.status(500).json({ error: 'Failed to get user' });

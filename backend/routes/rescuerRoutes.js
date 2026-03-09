@@ -3,29 +3,28 @@
 // =================================================
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/database');
+const { db } = require('../config/database');
 const { findNearestRescuers } = require('../services/nearestRescuer');
 
 // POST /api/rescuers/:id/availability - Toggle rescuer availability
-router.post('/:id/availability', async (req, res) => {
+router.post('/:id/availability', (req, res) => {
   const { id } = req.params;
   const { is_available, lat, lng } = req.body;
 
   try {
-    let query, params;
     if (lat && lng) {
-      query = `UPDATE users SET is_available = $1, current_location = ST_SetSRID(ST_Point($3, $4), 4326), last_active = NOW()
-               WHERE id = $2 RETURNING id, is_available, name`;
-      params = [is_available, id, lng, lat];
+      db.prepare(
+        `UPDATE users SET is_available = ?, lat = ?, lng = ?, last_active = datetime('now') WHERE id = ?`
+      ).run(is_available ? 1 : 0, lat, lng, id);
     } else {
-      query = `UPDATE users SET is_available = $1, last_active = NOW()
-               WHERE id = $2 RETURNING id, is_available, name`;
-      params = [is_available, id];
+      db.prepare(
+        `UPDATE users SET is_available = ?, last_active = datetime('now') WHERE id = ?`
+      ).run(is_available ? 1 : 0, id);
     }
 
-    const result = await pool.query(query, params);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Rescuer not found' });
-    res.json(result.rows[0]);
+    const row = db.prepare('SELECT id, is_available, name FROM users WHERE id = ?').get(id);
+    if (!row) return res.status(404).json({ error: 'Rescuer not found' });
+    res.json(row);
   } catch (err) {
     console.error('[Rescuer] Availability error:', err.message);
     res.status(500).json({ error: 'Failed to update availability' });
@@ -33,12 +32,12 @@ router.post('/:id/availability', async (req, res) => {
 });
 
 // GET /api/rescuers/nearest?lat=X&lng=Y&radius=5 - Find nearest rescuers
-router.get('/nearest', async (req, res) => {
+router.get('/nearest', (req, res) => {
   const { lat, lng, radius } = req.query;
   if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
 
   try {
-    const rescuers = await findNearestRescuers(
+    const rescuers = findNearestRescuers(
       { lat: parseFloat(lat), lng: parseFloat(lng) },
       parseFloat(radius) || 5
     );
@@ -50,17 +49,14 @@ router.get('/nearest', async (req, res) => {
 });
 
 // GET /api/rescuers - List all rescuers
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, name, phone, is_available, trust_score,
-              ST_Y(current_location::geometry) as lat,
-              ST_X(current_location::geometry) as lng,
-              last_active
+    const rows = db.prepare(
+      `SELECT id, name, phone, is_available, trust_score, lat, lng, last_active
        FROM users WHERE role = 'rescuer'
-       ORDER BY last_active DESC NULLS LAST`
-    );
-    res.json(result.rows);
+       ORDER BY last_active DESC`
+    ).all();
+    res.json(rows);
   } catch (err) {
     console.error('[Rescuer] List error:', err.message);
     res.status(500).json({ error: 'Failed to list rescuers' });

@@ -1,0 +1,88 @@
+/* =================================================
+   REUSABLE COMPONENT STYLES
+   ================================================= */
+
+/* Magnetic Button — pulls toward cursor */
+.magnetic-btn {
+  transition: transform 0.2s ease-out;
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: var(--space-lg);
+  right: var(--space-lg);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.toast {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--shadow-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: toastIn 0.4s ease-out, toastOut 0.3s ease-in 3s forwards;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.toast.success { border-left: 3px solid var(--accent-success); }
+.toast.error { border-left: 3px solid var(--accent-danger); }
+.toast.info { border-left: 3px solid var(--accent-primary); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastOut {
+  to { opacity: 0; transform: translateX(50px); }
+}
+
+/* Loading Shimmer */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.05),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badge-critical { background: var(--accent-danger); color: white; }
+.badge-moderate { background: var(--accent-warning); color: #000; }
+.badge-stable { background: var(--accent-success); color: white; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .role-cards { flex-direction: column; align-items: center; }
+  .role-card { width: 80%; }
+  .incident-cards-container { width: 200px; }
+  .stats-bar { flex-direction: column; align-items: center; }
+  .form-row { grid-template-columns: 1fr; }
+}

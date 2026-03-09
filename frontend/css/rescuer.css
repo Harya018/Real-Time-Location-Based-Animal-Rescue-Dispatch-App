@@ -1,0 +1,215 @@
+/* =================================================
+   RESCUER MODE SCREEN STYLES
+   ================================================= */
+.rescuer-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Map Section (Top 30%) */
+.rescuer-map-section {
+  position: relative;
+  height: 45vh;
+  min-height: 280px;
+}
+
+/* Availability Toggle */
+.availability-toggle-container {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  z-index: 10;
+}
+
+.gravity-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+.gravity-switch input { display: none; }
+.gravity-switch-slider {
+  position: relative;
+  width: 56px;
+  height: 30px;
+  background: rgba(239, 68, 68, 0.3);
+  border: 2px solid var(--accent-danger);
+  border-radius: var(--radius-full);
+  transition: var(--transition-normal);
+}
+.switch-orb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: var(--accent-danger);
+  border-radius: 50%;
+  transition: var(--transition-bounce);
+  box-shadow: 0 0 10px var(--accent-danger-glow);
+}
+.gravity-switch input:checked + .gravity-switch-slider {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: var(--accent-success);
+}
+.gravity-switch input:checked + .gravity-switch-slider .switch-orb {
+  left: 29px;
+  background: var(--accent-success);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  /* "Gravity pull down" effect reversal — orb floats to top when ON */
+  animation: orbFloat 2s ease-in-out infinite;
+}
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.switch-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 50px;
+}
+
+/* Requests Section (Bottom 70%) */
+.rescuer-requests-section {
+  flex: 1;
+  padding: var(--space-lg);
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+  color: var(--text-primary);
+}
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-danger);
+  animation: pulse 1.5s infinite;
+}
+
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Request Card (Asteroid) */
+.request-asteroid {
+  position: relative;
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  animation: asteroidEntry 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  transition: var(--transition-normal);
+}
+.request-asteroid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.request-asteroid.critical::before { background: var(--gradient-danger); }
+.request-asteroid.moderate::before { background: linear-gradient(90deg, var(--accent-warning), #fbbf24); }
+.request-asteroid.stable::before { background: var(--gradient-success); }
+
+.request-asteroid:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+@keyframes asteroidEntry {
+  0% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+  60% { transform: translateY(5px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.asteroid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-sm);
+}
+.asteroid-header h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.asteroid-severity {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+.asteroid-severity.critical { background: var(--accent-danger); }
+.asteroid-severity.moderate { background: var(--accent-warning); color: #000; }
+.asteroid-severity.stable { background: var(--accent-success); }
+
+.asteroid-body p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+.asteroid-meta {
+  display: flex;
+  gap: var(--space-md);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
+}
+
+/* Accept Button — Swipe Up Metaphor */
+.accept-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--gradient-success);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-bounce);
+}
+.accept-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: var(--space-2xl);
+  color: var(--text-muted);
+}
+.empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: var(--space-md);
+}
+.empty-state p {
+  font-size: 0.9rem;
+  font-weight: 500;
+}

@@ -1,7 +1,22 @@
 // =================================================
 // FAKE REPORT DETECTION - Rate limiting & location checks
 // =================================================
-const pool = require('../config/database');
+const { db } = require('../config/database');
+
+/**
+ * Haversine distance between two {lat, lng} points in meters.
+ */
+function haversineMeters(a, b) {
+  const R = 6371000; // Earth radius in meters
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) *
+      Math.cos((b.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
 
 /**
  * Detect whether a rescue report is potentially fake.
@@ -13,40 +28,38 @@ const pool = require('../config/database');
  * @param {Object} location - {lat, lng}
  * @returns {Object} { flag: boolean, reason: string|null }
  */
-async function detectFakeReport(userId, location) {
+function detectFakeReport(userId, location) {
   try {
     // Check 1: Rate limit — max 5 reports in 24 hours
-    const countResult = await pool.query(
+    const countRow = db.prepare(
       `SELECT COUNT(*) AS report_count
        FROM rescue_requests
-       WHERE citizen_id = $1
-         AND created_at > NOW() - INTERVAL '24 hours'`,
-      [userId]
-    );
-    const last24Hours = parseInt(countResult.rows[0].report_count);
+       WHERE citizen_id = ?
+         AND created_at > datetime('now', '-24 hours')`
+    ).get(userId);
+
+    const last24Hours = countRow ? countRow.report_count : 0;
 
     if (last24Hours >= 5) {
       return { flag: true, reason: 'rate_limit', message: 'Too many reports in the last 24 hours.' };
     }
 
     // Check 2: Location hopping — average distance from user's past reports
-    const historyResult = await pool.query(
-      `SELECT ST_Distance(
-         animal_location,
-         ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-       ) AS distance_m
+    const history = db.prepare(
+      `SELECT lat, lng
        FROM rescue_requests
-       WHERE citizen_id = $3
-         AND created_at > NOW() - INTERVAL '7 days'
+       WHERE citizen_id = ?
+         AND created_at > datetime('now', '-7 days')
        ORDER BY created_at DESC
-       LIMIT 10`,
-      [location.lng, location.lat, userId]
-    );
+       LIMIT 10`
+    ).all(userId);
 
-    if (historyResult.rows.length >= 3) {
-      const avgDistance =
-        historyResult.rows.reduce((sum, r) => sum + parseFloat(r.distance_m), 0) /
-        historyResult.rows.length;
+    if (history.length >= 3) {
+      let totalDist = 0;
+      for (const row of history) {
+        totalDist += haversineMeters(location, { lat: row.lat, lng: row.lng });
+      }
+      const avgDistance = totalDist / history.length;
 
       // Flag if average distance exceeds 50km — implies location spoofing
       if (avgDistance > 50000) {
@@ -55,11 +68,8 @@ async function detectFakeReport(userId, location) {
     }
 
     // Check 3: Trust score check
-    const userResult = await pool.query(
-      `SELECT trust_score FROM users WHERE id = $1`,
-      [userId]
-    );
-    if (userResult.rows.length > 0 && userResult.rows[0].trust_score < 0.3) {
+    const userRow = db.prepare('SELECT trust_score FROM users WHERE id = ?').get(userId);
+    if (userRow && userRow.trust_score < 0.3) {
       return { flag: true, reason: 'low_trust_score', message: 'User trust score too low.' };
     }
 
