@@ -367,8 +367,10 @@ class AIAssistant {
   }
 
   async _streamBubble(fullText) {
-    const wrap = this._bubble('ai', '');
+    const wrap = this._bubble('ai', '\u200b');  // zero-width space ensures .ai-bubble-text div is created
     const inner = wrap.querySelector('.ai-bubble-text');
+    if (!inner) return;  // safety guard
+    inner.innerHTML = '';  // clear the placeholder
     const tokens = fullText.split(/(\s+)/);
     let acc = '';
     for (const tok of tokens) {

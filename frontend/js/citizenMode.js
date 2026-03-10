@@ -34,6 +34,12 @@ class CitizenMode {
     this.profileHistory = new ProfileHistory(this.app, 'citizen');
     this.profileHistory.init();
 
+    // Initialize AI Report Preview
+    if (window.AIReportPreview) {
+      this.aiReportPreview = new AIReportPreview(this);
+      this.aiReportPreview.init();
+    }
+
     // Auto-refresh incidents every 15s
     this._refreshInterval = setInterval(() => this.loadIncidentsFromAPI(), 15000);
   }
@@ -48,6 +54,11 @@ class CitizenMode {
     document.getElementById('sos-form').addEventListener('submit', (e) => {
       e.preventDefault();
       this.submitSOS();
+    });
+
+    // Save Offline Button
+    document.getElementById('save-offline-btn')?.addEventListener('click', () => {
+      this.submitSOS(null, true); // true flag for explicit offline save
     });
 
     // Close SOS modal
@@ -290,7 +301,7 @@ class CitizenMode {
     }
   }
 
-  async submitSOS(aiData = null) {
+  async submitSOS(aiData = null, forceOffline = false) {
     const animalType = aiData?.animalType || document.getElementById('sos-animal-type')?.value || 'other';
     const isPriority = aiData ? (aiData.severity === 'critical') : (document.getElementById('sos-priority')?.checked || false);
     const severity = aiData?.severity || (isPriority ? 'critical' : (document.getElementById('sos-severity')?.value || 'moderate'));
@@ -320,12 +331,22 @@ class CitizenMode {
       severity,
       photos,
       isManual,
-      isPriority
+      isPriority,
+      ai_analysis: aiData?.ai_analysis || null
     };
 
     if (!payload.lat || !payload.lng) {
       this.app.showToast('⚠️ Location missing! Please enable GPS.', 'error');
       return false;
+    }
+
+    // Explicit Offline Save
+    if (forceOffline && window.offlineManager) {
+      await window.offlineManager.queueReport(payload);
+      this.app.showToast('💾 Report saved offline. You can upload it later from History.', 'success');
+      const modal = document.getElementById('sos-modal');
+      if (modal) modal.classList.remove('active');
+      return true;
     }
 
     this.app.showToast(isPriority ? '🚨 PRIORITY SIGNAL SENT!' : '📡 Sending rescue signal...', isPriority ? 'error' : 'info');
@@ -351,6 +372,14 @@ class CitizenMode {
       return true;
     } catch (err) {
       console.error('[SOS] Submission error:', err);
+      // If offline, queue the report automatically
+      if (window.offlineManager) {
+        await window.offlineManager.queueReport(payload);
+        this.app.showToast('📱 No internet — report saved offline. Will sync automatically.', 'info');
+        const modal = document.getElementById('sos-modal');
+        if (modal) modal.classList.remove('active');
+        return true;
+      }
       this.app.showToast('❌ Failed to send rescue signal. Check connection.', 'error');
       return false;
     }
@@ -386,6 +415,9 @@ class CitizenMode {
 
   // ===== LIVE DATA FROM API =====
   async loadIncidentsFromAPI() {
+    // Refresh offline list too
+    window.offlineManager?.renderOfflineList();
+
     try {
       const res = await fetch('/api/reports');
       if (!res.ok) throw new Error('HTTP error');

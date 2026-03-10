@@ -85,7 +85,6 @@ class RescuerMode {
           map: 'rescuer-fullmap-view',
           history: 'rescuer-history-view',
           profile: 'rescuer-profile-view',
-          ai: 'rescuer-ai-view',
         };
 
         const viewEl = document.getElementById(viewMap[view]);
@@ -101,12 +100,6 @@ class RescuerMode {
         if (view === 'history' && this.profileHistory) {
           this.profileHistory.loadHistory();
         }
-
-        // Lazy-init AI Rescue Analyst
-        if (view === 'ai' && !this.aiAssistant && window.AIAssistant) {
-          this.aiAssistant = new AIAssistant('rescuer');
-          this.aiAssistant.init();
-        }
       });
     });
   }
@@ -117,28 +110,16 @@ class RescuerMode {
     // Incoming rescue request
     this.app.socket.on('incoming_rescue_request', (data) => {
       if (!this.isAvailable) return;
+      
+      // Don't show if we already denied it (session-based for now)
+      if (this._deniedIds?.has(data.id)) return;
+
       const request = { ...data, photos: data.photo ? [data.photo] : [], aiReport: null };
       this.incomingRequests.push(request);
       this.renderRequests();
       this.app.showToast(`🚨 New ${data.severity || 'moderate'} rescue request!`, 'error');
       if (data.location) {
         this.map.addIncidentMarker(data.id, data.location.lat, data.location.lng, data.severity, data.description, request.photos);
-      }
-    });
-
-    // AI report arrives (non-blocking, ~2-5s after SOS)
-    this.app.socket.on('ai_report_ready', (data) => {
-      // Update the request object in memory
-      const req = this.incomingRequests.find(r => r.id === data.requestId);
-      if (req) {
-        req.aiReport = data.aiReport;
-        // Update card in place without full re-render
-        const card = document.querySelector(`[data-id="${data.requestId}"] .ai-report-section`);
-        if (card) {
-          card.innerHTML = this._renderAIReport(data.aiReport);
-          card.style.display = 'block';
-        }
-        this.app.showToast('🤖 AI triage report ready for new request', 'success');
       }
     });
 
@@ -152,11 +133,11 @@ class RescuerMode {
   // Load existing pending reports from API
   async loadPendingReports() {
     try {
-      const res = await fetch('/api/reports'); // Fetch all for stats
+      const res = await fetch('/api/reports?status=pending'); 
       if (!res.ok) throw new Error('HTTP error');
-      const allReports = await res.json();
+      const reports = await res.json();
 
-      this.incomingRequests = allReports.map((r) => {
+      this.incomingRequests = reports.map((r) => {
         let photos = [];
         try { photos = r.photos ? JSON.parse(r.photos) : []; } catch(e) {}
 
@@ -173,11 +154,11 @@ class RescuerMode {
           citizenName: r.citizen_name || null
         };
 
-        if (request.status === 'pending' && request.location) {
+        if (request.status === 'pending' && request.location && !this._deniedIds?.has(request.id)) {
           this.map.addIncidentMarker(request.id, request.location.lat, request.location.lng, request.severity, request.description, request.photos);
         }
         return request;
-      });
+      }).filter(r => !this._deniedIds?.has(r.id));
 
       this.updateDashboardUI();
       this.renderRequests();
@@ -217,7 +198,8 @@ class RescuerMode {
     document.getElementById('stats-priority').textContent = priority;
 
     // Update Chart total
-    document.getElementById('total-rescues-count').textContent = this.incomingRequests.length;
+    const totalRescues = active + process + finished;
+    document.getElementById('total-rescues-count').textContent = totalRescues;
     
     // Update Progress Bars (Mock data for demo impact)
     const dogCount = this.incomingRequests.filter(r => r.animalType === 'dog').length;
@@ -227,24 +209,12 @@ class RescuerMode {
     // Update donut chart segments visually (mocking it via CSS variables logic if we had it, or just keeping the HTML static)
   }
 
-  _renderAIReport(aiReport) {
-    if (!aiReport) return '';
-    const html = aiReport
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-      .replace(/^## (.*)/gm,'<h5 style="margin:10px 0 4px;color:#a78bfa;">$1</h5>')
-      .replace(/^- (.*)/gm,'<li>$1</li>')
-      .replace(/\n/g,'<br>');
-    
-    return `<div class="ai-report-popup glass" style="padding:15px;max-height:300px;overflow-y:auto;font-size:.85rem;line-height:1.5;">${html}</div>`;
-  }
-
   renderRequests() {
     const tableBody = document.getElementById('incoming-requests-table');
     const emptyState = document.getElementById('no-requests');
     
     // We only show "Active/Pending" and "In Process" in the main list
-    const visibleRequests = this.incomingRequests.filter(r => r.status !== 'rescued');
+    const visibleRequests = this.incomingRequests.filter(r => r.status !== 'rescued' && r.status !== 'denied');
 
     if (visibleRequests.length === 0) {
       tableBody.innerHTML = '';
@@ -278,26 +248,12 @@ class RescuerMode {
           <td>
             <div class="table-actions">
               <button class="action-icon-btn" onclick="window.app.rescuerMode.showRequestDetails('${req.id}')" title="View Details">👁️</button>
-              <button class="action-icon-btn ai-btn" onclick="window.app.rescuerMode.toggleAIReport('${req.id}')" title="AI Triage Report">🤖</button>
               <button class="action-icon-btn" onclick="window.app.rescuerMode.openMap('${req.id}')" title="Open Map">📍</button>
             </div>
           </td>
         </tr>
       `;
     }).join('');
-  }
-
-  toggleAIReport(reqId) {
-    const req = this.incomingRequests.find(r => r.id === reqId);
-    if (!req) return;
-    
-    if (!req.aiReport) {
-      this.app.showToast('🤖 AI Report is still being synthesized...', 'info');
-      return;
-    }
-
-    // Reuse details modal or show a specialized one? Let's use details modal but scroll to AI part
-    this.showRequestDetails(reqId);
   }
 
   openMap(reqId) {
@@ -333,7 +289,7 @@ class RescuerMode {
     // Populate text
     document.getElementById('rescue-details-severity').textContent = (req.severity || 'moderate').toUpperCase();
     document.getElementById('rescue-details-severity').className = `badge badge-${req.severity || 'moderate'}`;
-    document.getElementById('rescue-details-description').textContent = req.description || 'Emergency reported — no description provided';
+    document.getElementById('rescue-details-description').textContent = req.description || 'Emergency reported';
     
     // Distance / Location
     let locString = 'Location available';
@@ -351,39 +307,45 @@ class RescuerMode {
     document.getElementById('rescue-details-location').textContent = locString;
     document.getElementById('rescue-details-time').textContent = new Date(req.timestamp).toLocaleTimeString();
 
-    // AI Report Injection
-    const aiSectionId = 'rescue-details-ai-section';
-    let aiSection = document.getElementById(aiSectionId);
-    if (!aiSection) {
-      aiSection = document.createElement('div');
-      aiSection.id = aiSectionId;
-      aiSection.style.marginTop = '15px';
-      document.getElementById('rescue-details-location').parentElement.parentElement.insertBefore(aiSection, document.getElementById('rescue-details-accept-btn'));
-    }
-
-    if (req.aiReport) {
-      aiSection.innerHTML = `
-        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
-          <h4 style="margin: 0 0 10px; color: #a78bfa; display: flex; align-items: center; gap: 8px;">🤖 AI Triage Report</h4>
-          <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5; max-height: 200px; overflow-y: auto;">
-            ${req.aiReport.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
-          </div>
-        </div>
-      `;
-      aiSection.style.display = 'block';
-    } else {
-      aiSection.style.display = 'none';
-    }
-
-    // Hook up accept button
-    const acceptBtn = document.getElementById('rescue-details-accept-btn');
-    acceptBtn.onclick = () => {
+    // Wire up Buttons
+    document.getElementById('rescue-details-accept-btn').onclick = () => {
       modal.classList.remove('active');
-      this.acceptRequest(req.id, req.location ? JSON.stringify(req.location).replace(/"/g, "'") : 'null');
+      this.acceptRequest(req.id, req.location);
+    };
+
+    document.getElementById('rescue-details-deny-btn').onclick = () => {
+      modal.classList.remove('active');
+      this.denyRequest(req.id);
+    };
+
+    document.getElementById('rescue-details-pending-btn').onclick = () => {
+      modal.classList.remove('active');
+      this.app.showToast('⏳ Request kept in your pending list', 'info');
     };
 
     // Show modal
     modal.classList.add('active');
+  }
+
+  async denyRequest(requestId) {
+    if (!this._deniedIds) this._deniedIds = new Set();
+    this._deniedIds.add(requestId);
+
+    try {
+      await fetch(`/api/reports/${requestId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'denied', rescuer_id: this.app.userId })
+      });
+      
+      this.incomingRequests = this.incomingRequests.filter(r => r.id !== requestId);
+      this.renderRequests();
+      this.updateDashboardUI();
+      this.app.showToast('❌ Request denied and hidden', 'info');
+    } catch (err) {
+      console.error('Deny error:', err);
+      this.app.showToast('Failed to deny request.', 'error');
+    }
   }
 
   acceptRequest(requestId, incidentLocation) {
@@ -392,36 +354,31 @@ class RescuerMode {
       return;
     }
 
-    // Parse incident location if it's a string
-    let incLoc = incidentLocation;
-    if (typeof incidentLocation === 'string') {
-      try { incLoc = JSON.parse(incidentLocation.replace(/'/g, '"')); } catch (e) { incLoc = null; }
-    }
-
     this.activeRequestId = requestId;
 
     this.app.socket.acceptRequest({
       requestId,
       rescuerId: this.app.userId,
       rescuerLocation: this.rescuerLocation,
-      incidentLocation: incLoc,
+      incidentLocation,
     });
 
     // Remove from incoming
     this.incomingRequests = this.incomingRequests.filter((r) => r.id !== requestId);
     this.renderRequests();
-    this.app.showToast('🚀 Request accepted! Opening Google Maps Navigation...', 'success');
+    this.updateDashboardUI();
+    this.app.showToast('🚀 Request accepted! Opening navigation...', 'success');
 
     // Open Google Maps Directions in a new tab
-    if (this.rescuerLocation && incLoc) {
+    if (this.rescuerLocation && incidentLocation) {
       const origin = `${this.rescuerLocation.lat},${this.rescuerLocation.lng}`;
-      const destination = `${incLoc.lat},${incLoc.lng}`;
+      const destination = `${incidentLocation.lat},${incidentLocation.lng}`;
       const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
       window.open(mapsUrl, '_blank');
     }
 
     // Start simulated location updates
-    this.startLocationBroadcast(requestId, incLoc);
+    this.startLocationBroadcast(requestId, incidentLocation);
   }
 
   // Simulate periodic location updates during active rescue

@@ -38,6 +38,12 @@ class App {
     // Initialize Health Passport (accessible from all modes)
     this.healthPassport = new HealthPassport(this);
     this.healthPassport.init();
+
+    // Initialize Offline Report Manager (global — works before role selection)
+    if (window.OfflineReportManager) {
+      this.offlineManager = new OfflineReportManager();
+      this.offlineManager.init();
+    }
   }
 
   // ===== SPLASH SCREEN =====
@@ -61,7 +67,7 @@ class App {
       'Fetching Real-Time Distress Signals...',
       'Synthesizing Quantum Rescue Patterns...',
       'Synchronizing Dispatch Core...',
-      'Welcome to PawGuard.'
+      'Welcome to JeevaRaksha.'
     ];
 
     let progress = 0;

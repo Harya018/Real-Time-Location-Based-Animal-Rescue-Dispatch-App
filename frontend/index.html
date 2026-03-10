@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Animal Rescue Dispatch Platform — real-time rescue coordination with anti-gravity UI" />
-  <title>🐾 PawGuard — Animal Rescue Platform</title>
+  <title>🐾 JeevaRaksha — Animal Rescue Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 
@@ -18,8 +18,13 @@
   <link rel="stylesheet" href="css/components.css" />
   <link rel="stylesheet" href="css/profile.css" />
   <link rel="stylesheet" href="css/ai.css" />
+  <link rel="stylesheet" href="css/aiReport.css" />
+  <link rel="stylesheet" href="css/offline.css" />
 </head>
 <body>
+  <!-- ============ OFFLINE BANNER ============ -->
+  <div id="offline-banner" class="offline-banner"></div>
+
   <!-- ============ LIVE WALLPAPER ============ -->
   <div id="live-wallpaper" class="live-wallpaper"></div>
 
@@ -30,7 +35,7 @@
       <div class="portal-glow"></div>
       <div class="splash-logo antigravity-float">
         <span class="logo-icon">🐾</span>
-        <h1 class="logo-text">PawGuard</h1>
+        <h1 class="logo-text">JeevaRaksha</h1>
         <p class="logo-tagline">Every Second Counts</p>
       </div>
       <div class="splash-animals">
@@ -109,6 +114,18 @@
     <!-- HISTORY VIEW -->
     <div id="citizen-history-view" class="citizen-view" style="display:none">
       <div class="panel-container">
+        <!-- Saved Offline Reports Panel -->
+        <div id="offline-reports-panel" class="offline-reports-panel" style="display:none;">
+          <div class="offline-panel-header">
+            <h2 class="panel-title">💾 Saved Offline Reports</h2>
+            <button id="upload-all-btn" class="btn-upload-all">
+              <span>🔄</span> Upload All
+            </button>
+          </div>
+          <p class="offline-panel-hint">These reports are saved locally and will be uploaded when you're online.</p>
+          <div id="offline-reports-list" class="offline-reports-list"></div>
+        </div>
+
         <h2 class="panel-title antigravity-float">📋 Rescue History</h2>
         <div id="citizen-history-list" class="history-list">
           <div class="empty-state">
@@ -430,71 +447,10 @@
       </div>
     </div>
 
-    <!-- AI RESCUE ANALYST CHAT VIEW -->
-    <div id="rescuer-ai-view" class="rescuer-view" style="display:none; flex-direction:column;">
-      <div id="rescuer-ai-panel" class="ai-panel">
-
-        <!-- Small top bar -->
-        <div class="ai-panel-header">
-          <div class="ai-header-icon">🔬</div>
-          <div>
-            <h3>Rescue Analyst AI</h3>
-            <span class="ai-header-sub">Triage &amp; Rescue Report Generator</span>
-          </div>
-        </div>
-
-        <!-- CHAT FEED -->
-        <div class="ai-feed"></div>
-
-        <!-- CENTER STAGE -->
-        <div class="ai-center-stage">
-          <h2 class="ai-center-title">What can I help with?</h2>
-          <div class="ai-inputbar">
-            <button class="ai-btn ai-btn-plus" title="Attach image">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-              <input type="file" accept="image/*" class="ai-file-input" style="display:none">
-            </button>
-            <textarea class="ai-input" rows="1" placeholder="Ask anything"></textarea>
-            <button class="ai-btn ai-btn-mic" title="Use microphone">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            </button>
-            <button class="ai-btn ai-btn-send" title="Send">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- CHIPS -->
-        <div class="ai-chips"></div>
-
-        <!-- BOTTOM BAR -->
-        <div class="ai-bottom-bar">
-          <div class="ai-thumb-wrap" style="display:none">
-            <img class="ai-thumb-img" src="" alt="">
-            <button class="ai-thumb-del">✕</button>
-          </div>
-          <div class="ai-inputbar">
-            <button class="ai-btn ai-btn-plus" title="Attach image">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-              <input type="file" accept="image/*" class="ai-file-input" style="display:none">
-            </button>
-            <textarea class="ai-input" rows="1" placeholder="Ask anything"></textarea>
-            <button class="ai-btn ai-btn-mic" title="Use microphone">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            </button>
-            <button class="ai-btn ai-btn-send" title="Send">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
 
     <nav class="bottom-nav glass" id="rescuer-nav">
       <button class="nav-btn active" data-view="requests"><span>📡</span>Requests</button>
       <button class="nav-btn" data-view="map"><span>🗺️</span>Map</button>
-      <button class="nav-btn" data-view="ai"><span>🔬</span>AI Report</button>
       <button class="nav-btn" data-view="history"><span>📋</span>Completed</button>
       <button class="nav-btn" data-view="profile"><span>👤</span>Profile</button>
     </nav>
@@ -539,6 +495,11 @@
             </div>
             <img id="photo-preview" class="photo-preview-img" style="display:none" />
           </div>
+          <button type="button" class="ai-analyze-btn" id="ai-analyze-btn" style="display:none">
+            <span class="btn-shimmer"></span>
+            <span>🔬</span> AI Analyze Image
+          </button>
+          <div id="ai-report-container" style="display:none"></div>
         </div>
 
         <div class="form-group">
@@ -570,9 +531,14 @@
           <p class="priority-hint">🚨 Use only for life-threatening emergencies</p>
         </div>
 
-        <button type="submit" class="btn-primary btn-glow magnetic-btn">
-          <span>🚀</span> Send Rescue Signal
-        </button>
+        <div style="display:flex; gap:10px; margin-top:4px;">
+          <button type="submit" class="btn-primary btn-glow magnetic-btn" style="flex:1">
+            <span>🚀</span> Send Rescue Signal
+          </button>
+          <button type="button" id="save-offline-btn" class="btn-primary magnetic-btn" style="flex:1; background: linear-gradient(135deg, #f59e0b, #d97706);">
+            <span>💾</span> Save Offline
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -675,9 +641,19 @@
           <span style="display: block;">🕐 Reported: <strong id="rescue-details-time">Time...</strong></span>
         </div>
         
-        <button id="rescue-details-accept-btn" class="btn-primary btn-glow magnetic-btn" style="width: 100%;">
-          <span>🚀</span> Accept & Navigate
-        </button>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <button id="rescue-details-accept-btn" class="btn-primary btn-glow magnetic-btn" style="width: 100%;">
+            <span>✅</span> Accept & Navigate
+          </button>
+          <div style="display: flex; gap: 12px;">
+            <button id="rescue-details-deny-btn" class="btn-primary magnetic-btn" style="flex: 1; background: linear-gradient(135deg, #ef4444, #dc2626);">
+              <span>❌</span> Deny Request
+            </button>
+            <button id="rescue-details-pending-btn" class="btn-primary magnetic-btn" style="flex: 1; background: linear-gradient(135deg, #6b7280, #4b5563);">
+              <span>⏳</span> Keep Pending
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -694,6 +670,8 @@
   <script src="js/healthPassport.js"></script>
   <script src="js/profileHistory.js"></script>
   <script src="js/aiAssistant.js"></script>
+  <script src="js/aiReportPreview.js"></script>
+  <script src="js/offlineReportManager.js"></script>
   <script src="js/liveBackground.js"></script>
   <script src="js/app.js"></script>
 </body>

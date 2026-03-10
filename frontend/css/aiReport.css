@@ -1,0 +1,217 @@
+/* ============================================================
+   AI REPORT PREVIEW — Analysis Card Styles
+   ============================================================ */
+
+/* ── Analyze Button ── */
+.ai-analyze-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.ai-analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4); }
+.ai-analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.ai-analyze-btn .btn-shimmer {
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shimmerSlide 2s infinite;
+}
+@keyframes shimmerSlide { 100% { left: 100%; } }
+
+/* ── Report Preview Container ── */
+.ai-report-preview {
+  margin-top: 16px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: reportSlideIn 0.4s ease-out;
+}
+@keyframes reportSlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+.ai-report-header h3 { margin: 0; color: #e2e8f0; font-size: 1rem; font-weight: 700; }
+
+.confidence-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.confidence-badge.low { background: rgba(239, 68, 68, 0.15); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
+
+/* ── Report Body ── */
+.ai-report-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.report-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.report-field-value {
+  padding: 8px 12px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  min-height: 20px;
+  transition: border-color 0.2s;
+}
+.report-field-value:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.report-field-value[contenteditable="true"]:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* ── Severity Row ── */
+.report-severity-row {
+  display: flex;
+  gap: 12px;
+}
+.report-severity-row .report-field { flex: 1; }
+
+.severity-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.severity-tag.critical, .severity-tag.Critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.severity-tag.high, .severity-tag.High { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.severity-tag.medium, .severity-tag.Medium { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+.severity-tag.low, .severity-tag.Low { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+
+/* ── Report Actions ── */
+.ai-report-actions {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.ai-report-actions button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-confirm-report {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+.btn-confirm-report:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3); }
+.btn-discard-report {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+.btn-discard-report:hover { background: rgba(239, 68, 68, 0.25); }
+
+/* ── Loading Skeleton ── */
+.ai-report-loading {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 16px;
+}
+.skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg, rgba(99,102,241,0.1) 25%, rgba(99,102,241,0.2) 50%, rgba(99,102,241,0.1) 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.5s infinite;
+  border-radius: 6px;
+}
+.skeleton-line:nth-child(1) { width: 60%; }
+.skeleton-line:nth-child(2) { width: 80%; }
+.skeleton-line:nth-child(3) { width: 40%; }
+.skeleton-line:nth-child(4) { width: 70%; }
+.skeleton-line:nth-child(5) { width: 55%; }
+@keyframes skeletonPulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.skeleton-header span { font-size: 0.9rem; color: #94a3b8; }
+.skeleton-spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(99,102,241,0.3);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* ── Simulated Badge ── */
+.simulated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  margin-left: 8px;
+}

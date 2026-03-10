@@ -33,7 +33,7 @@ db.exec(`
     description TEXT,
     photos TEXT,
     severity TEXT CHECK(severity IN ('critical', 'moderate', 'stable')),
-    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'en_route', 'rescued', 'fake_report')),
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'en_route', 'rescued', 'fake_report', 'denied')),
     ai_report TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     accepted_by TEXT REFERENCES users(id),
@@ -71,6 +71,11 @@ db.exec(`
 // ── Migrate existing DBs: add ai_report column if missing ──
 try {
   db.prepare('ALTER TABLE rescue_requests ADD COLUMN ai_report TEXT').run();
+} catch (_) { /* column already exists — ignore */ }
+
+// ── Migrate: add ai_analysis JSON column if missing ──
+try {
+  db.prepare('ALTER TABLE rescue_requests ADD COLUMN ai_analysis TEXT').run();
 } catch (_) { /* column already exists — ignore */ }
 
 // Re-seed requests every restart so images and descriptions are always fresh

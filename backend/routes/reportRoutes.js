@@ -101,7 +101,7 @@ Reported at ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}. Verify
 
 // POST /api/reports - Create a new rescue request
 router.post('/', async (req, res) => {
-  const { citizen_id, lat, lng, description, severity, photos } = req.body;
+  const { citizen_id, lat, lng, description, severity, photos, ai_analysis } = req.body;
 
   if (!citizen_id || !lat || !lng) {
     return res.status(400).json({ error: 'citizen_id, lat, lng are required' });
@@ -127,10 +127,11 @@ router.post('/', async (req, res) => {
 
     const id = generateId();
     const photosJson = JSON.stringify(photos || []);
+    const analysisJson = ai_analysis ? JSON.stringify(ai_analysis) : null;
     db.prepare(
-      `INSERT INTO rescue_requests (id, citizen_id, lat, lng, description, severity, photos, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
-    ).run(id, citizen_id, lat, lng, description, severity || 'moderate', photosJson);
+      `INSERT INTO rescue_requests (id, citizen_id, lat, lng, description, severity, photos, status, ai_analysis)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+    ).run(id, citizen_id, lat, lng, description, severity || 'moderate', photosJson, analysisJson);
 
     const row = db.prepare('SELECT * FROM rescue_requests WHERE id = ?').get(id);
     res.status(201).json(row);
@@ -237,6 +238,69 @@ router.patch('/:id/status', (req, res) => {
     console.error('[Report] Update status error:', err.message);
     res.status(500).json({ error: 'Failed to update status' });
   }
+});
+// POST /api/reports/batch - Bulk upload offline-queued reports
+router.post('/batch', async (req, res) => {
+  const { reports } = req.body;
+  if (!Array.isArray(reports) || reports.length === 0) {
+    return res.status(400).json({ error: 'reports array is required' });
+  }
+
+  const results = [];
+  for (const report of reports) {
+    try {
+      const { citizen_id, lat, lng, description, severity, photos, ai_analysis } = report;
+      if (!lat || !lng) { results.push({ success: false, error: 'Missing location' }); continue; }
+
+      const id = generateId();
+      const finalCitizenId = citizen_id || 'offline-user';
+
+      // Auto-register guest user if missing
+      let sender = db.prepare('SELECT name FROM users WHERE id = ?').get(finalCitizenId);
+      if (!sender) {
+        db.prepare('INSERT INTO users (id, role, name, phone) VALUES (?, ?, ?, ?)')
+          .run(finalCitizenId, 'citizen', 'Guest Citizen', 'guest-' + finalCitizenId.slice(-6));
+      }
+
+      const photosJson = JSON.stringify(photos || []);
+      const analysisJson = ai_analysis ? JSON.stringify(ai_analysis) : null;
+
+      db.prepare(
+        `INSERT INTO rescue_requests (id, citizen_id, lat, lng, description, severity, photos, status, ai_analysis)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+      ).run(id, finalCitizenId, lat, lng, description || '', severity || 'moderate', photosJson, analysisJson);
+
+      const row = db.prepare('SELECT * FROM rescue_requests WHERE id = ?').get(id);
+      results.push({ success: true, id: row.id });
+
+      // Broadcast to rescuers
+      try {
+        const io = getIO();
+        if (io) {
+          io.to('rescuers').emit('incoming_rescue_request', {
+            id: row.id,
+            location: { lat: row.lat, lng: row.lng },
+            citizenId: row.citizen_id,
+            description: row.description,
+            severity: row.severity,
+            photo: photos?.[0] || null,
+            timestamp: row.created_at
+          });
+        }
+      } catch (_) {}
+
+      // Non-blocking AI report generation
+      generateAIReport(description, severity || 'moderate', lat, lng, photos || [])
+        .then(aiReport => {
+          db.prepare('UPDATE rescue_requests SET ai_report = ? WHERE id = ?').run(aiReport, id);
+        }).catch(() => {});
+
+    } catch (err) {
+      results.push({ success: false, error: err.message });
+    }
+  }
+
+  res.json({ results, synced: results.filter(r => r.success).length, total: reports.length });
 });
 
 module.exports = router;
