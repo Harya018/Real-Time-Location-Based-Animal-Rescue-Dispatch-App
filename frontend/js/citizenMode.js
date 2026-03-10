@@ -10,6 +10,7 @@ class CitizenMode {
     this.activeRequestId = null;
     this.trackingMap = null;
     this.profileHistory = null;
+    this.aiAssistant = null;
     this._refreshInterval = null;
   }
 
@@ -18,8 +19,10 @@ class CitizenMode {
     this.map = new MapManager('citizen-map').init();
     this.map.locateUser().then((loc) => {
       this.userLocation = loc;
+      this.map.showNearbyVets(loc); // Add Vet Clinics to Citizen Map
     }).catch(() => {
       this.userLocation = { lat: 12.9716, lng: 77.5946 }; // Fallback
+      this.map.showNearbyVets(this.userLocation);
     });
 
     this.bindEvents();
@@ -159,6 +162,7 @@ class CitizenMode {
           map: 'citizen-map-view',
           history: 'citizen-history-view',
           profile: 'citizen-profile-view',
+          ai: 'citizen-ai-view',
         };
 
         const viewEl = document.getElementById(viewMap[view]);
@@ -175,6 +179,12 @@ class CitizenMode {
         // Refresh history when viewing
         if (view === 'history' && this.profileHistory) {
           this.profileHistory.loadHistory();
+        }
+
+        // Lazy-init AI assistant
+        if (view === 'ai' && !this.aiAssistant && window.AIAssistant) {
+          this.aiAssistant = new AIAssistant('citizen');
+          this.aiAssistant.init();
         }
       });
     });
@@ -224,8 +234,37 @@ class CitizenMode {
     // New incoming request → also add to citizen map
     this.app.socket.on('incoming_rescue_request', (data) => {
       if (data.location && this.map) {
-        this.map.addIncidentMarker(data.id, data.location.lat, data.location.lng, data.severity || 'moderate');
+        this.map.addIncidentMarker(
+          data.id,
+          data.location.lat,
+          data.location.lng,
+          data.severity || 'moderate',
+          data.description,
+          data.photo ? [data.photo] : []
+        );
       }
+    });
+
+    // Active Rescuers live updates
+    this.app.socket.on('active_rescuers_update', (rescuers) => {
+      if (!this.map) return;
+      
+      const currentIds = new Set(rescuers.map(r => r.id));
+      
+      // Remove rescuers that went offline
+      Object.keys(this.map.rescuerMarkers).forEach(id => {
+         if (!currentIds.has(id)) {
+            this.map.rescuerMarkers[id].setMap(null);
+            delete this.map.rescuerMarkers[id];
+         }
+      });
+      
+      // Plot or update online rescuers
+      rescuers.forEach(r => {
+        if (r.location && r.location.lat && r.location.lng) {
+            this.map.addRescuerMarker(r.id, r.location.lat, r.location.lng, r.name);
+        }
+      });
     });
   }
 
@@ -375,7 +414,9 @@ class CitizenMode {
       .filter((r) => r.status === 'pending' || r.status === 'accepted')
       .forEach((r) => {
         if (r.lat && r.lng) {
-          this.map.addIncidentMarker(r.id, Number(r.lat), Number(r.lng), r.severity || 'moderate');
+          let photos = [];
+          try { photos = r.photos ? JSON.parse(r.photos) : []; } catch (e) {}
+          this.map.addIncidentMarker(r.id, Number(r.lat), Number(r.lng), r.severity || 'moderate', r.description, photos);
         }
       });
   }

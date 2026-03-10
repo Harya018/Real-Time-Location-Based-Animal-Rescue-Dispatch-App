@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/healthPassport.css" />
   <link rel="stylesheet" href="css/components.css" />
   <link rel="stylesheet" href="css/profile.css" />
+  <link rel="stylesheet" href="css/ai.css" />
 </head>
 <body>
   <!-- ============ SPLASH SCREEN ============ -->
@@ -158,11 +159,73 @@
       </div>
     </div>
 
+    <!-- AI FIRST AID CHAT VIEW -->
+    <div id="citizen-ai-view" class="citizen-view" style="display:none; flex-direction:column;">
+      <div id="citizen-ai-panel" class="ai-panel">
+
+        <!-- Small top bar -->
+        <div class="ai-panel-header">
+          <div class="ai-header-icon">🤖</div>
+          <div>
+            <h3>PawGuard AI</h3>
+            <span class="ai-header-sub">First Aid &amp; Safety Assistant</span>
+          </div>
+        </div>
+
+        <!-- CHAT FEED (visible only when .chatting) -->
+        <div class="ai-feed"></div>
+
+        <!-- CENTER STAGE: shown before conversation starts -->
+        <div class="ai-center-stage">
+          <h2 class="ai-center-title">What can I help with?</h2>
+          <!-- Inputbar inside center stage for initial view -->
+          <div class="ai-inputbar">
+            <button class="ai-btn ai-btn-plus" title="Attach image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <input type="file" accept="image/*" class="ai-file-input" style="display:none">
+            </button>
+            <textarea class="ai-input" rows="1" placeholder="Ask anything"></textarea>
+            <button class="ai-btn ai-btn-mic" title="Use microphone">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button class="ai-btn ai-btn-send" title="Send">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- CHIPS (shown below center inputbar) -->
+        <div class="ai-chips"></div>
+
+        <!-- BOTTOM BAR: inputbar + thumb when chatting -->
+        <div class="ai-bottom-bar">
+          <div class="ai-thumb-wrap" style="display:none">
+            <img class="ai-thumb-img" src="" alt="">
+            <button class="ai-thumb-del">✕</button>
+          </div>
+          <div class="ai-inputbar">
+            <button class="ai-btn ai-btn-plus" title="Attach image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <input type="file" accept="image/*" class="ai-file-input" style="display:none">
+            </button>
+            <textarea class="ai-input" rows="1" placeholder="Ask anything"></textarea>
+            <button class="ai-btn ai-btn-mic" title="Use microphone">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button class="ai-btn ai-btn-send" title="Send">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Navbar -->
     <nav class="bottom-nav glass" id="citizen-nav">
       <button class="nav-btn active" data-view="map"><span>🗺️</span>Map</button>
+      <button class="nav-btn" data-view="ai"><span>🤖</span>AI Help</button>
       <button class="nav-btn" data-view="history"><span>📋</span>History</button>
-      <button class="nav-btn" data-view="passport"><span>💊</span>Health</button>
       <button class="nav-btn" data-view="profile"><span>👤</span>Profile</button>
     </nav>
   </div>
@@ -170,42 +233,39 @@
   <!-- ============ RESCUER MODE SCREEN ============ -->
   <div id="rescuer-screen" class="screen">
     <!-- REQUESTS VIEW (default) -->
-    <div id="rescuer-requests-view" class="rescuer-view active-view">
-      <div class="rescuer-layout">
-        <!-- Top: Live Map -->
-        <div class="rescuer-map-section">
-          <div id="rescuer-map" class="map-container"></div>
-          <div class="map-overlay-gradient bottom"></div>
-          <div class="availability-toggle-container">
-            <label class="gravity-switch" id="availability-toggle">
-              <input type="checkbox" id="rescuer-available" />
-              <span class="gravity-switch-slider">
-                <span class="switch-orb"></span>
-              </span>
-              <span class="switch-label" id="switch-label">Offline</span>
-            </label>
-          </div>
+    <div id="rescuer-requests-view" class="rescuer-view active-view" style="padding: 20px; overflow-y: auto;">
+      <!-- Professional Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
+        <h3 class="section-title antigravity-float" style="margin: 0; font-size: 1.8rem;">
+          <span class="pulse-dot"></span>
+          Live Rescue Dashboard
+        </h3>
+        <div class="availability-toggle-container" style="position: relative; background: rgba(10, 15, 30, 0.6); padding: 10px 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center;">
+          <span style="margin-right: 15px; color: #b8b8d4; font-weight: 600;">Status:</span>
+          <label class="gravity-switch" id="availability-toggle" style="margin: 0;">
+            <input type="checkbox" id="rescuer-available" />
+            <span class="gravity-switch-slider">
+              <span class="switch-orb"></span>
+            </span>
+            <span class="switch-label" id="switch-label">Offline</span>
+          </label>
         </div>
+      </div>
 
-        <!-- Bottom: Incoming Requests -->
-        <div class="rescuer-requests-section">
-          <h3 class="section-title antigravity-float">
-            <span class="pulse-dot"></span>
-            Incoming Requests
-          </h3>
-          <div id="incoming-requests" class="requests-list"></div>
-          <div id="no-requests" class="empty-state">
-            <span class="empty-icon antigravity-float">🛰️</span>
-            <p>Scanning for distress signals...</p>
-          </div>
+      <!-- Dashboard Grid -->
+      <div class="rescuer-requests-section" style="background: transparent; padding: 0; height: auto;">
+        <div id="incoming-requests" class="requests-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; padding-bottom: 100px;"></div>
+        <div id="no-requests" class="empty-state" style="margin-top: 10vh; background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.2);">
+          <span class="empty-icon antigravity-float">🛰️</span>
+          <p>Scanning for distress signals...</p>
         </div>
       </div>
     </div>
 
     <!-- RESCUER MAP FULLSCREEN VIEW -->
     <div id="rescuer-fullmap-view" class="rescuer-view" style="display:none">
-      <div id="rescuer-fullmap" class="map-container" style="width:100%;height:100%"></div>
-      <div class="map-overlay-gradient"></div>
+      <div id="rescuer-map" class="map-container" style="width:100%;height:100%"></div>
+      <div class="map-overlay-gradient bottom"></div>
     </div>
 
     <!-- RESCUER HISTORY VIEW -->
@@ -264,9 +324,71 @@
       </div>
     </div>
 
+    <!-- AI RESCUE ANALYST CHAT VIEW -->
+    <div id="rescuer-ai-view" class="rescuer-view" style="display:none; flex-direction:column;">
+      <div id="rescuer-ai-panel" class="ai-panel">
+
+        <!-- Small top bar -->
+        <div class="ai-panel-header">
+          <div class="ai-header-icon">🔬</div>
+          <div>
+            <h3>Rescue Analyst AI</h3>
+            <span class="ai-header-sub">Triage &amp; Rescue Report Generator</span>
+          </div>
+        </div>
+
+        <!-- CHAT FEED -->
+        <div class="ai-feed"></div>
+
+        <!-- CENTER STAGE -->
+        <div class="ai-center-stage">
+          <h2 class="ai-center-title">What can I help with?</h2>
+          <div class="ai-inputbar">
+            <button class="ai-btn ai-btn-plus" title="Attach image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <input type="file" accept="image/*" class="ai-file-input" style="display:none">
+            </button>
+            <textarea class="ai-input" rows="1" placeholder="Ask anything"></textarea>
+            <button class="ai-btn ai-btn-mic" title="Use microphone">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button class="ai-btn ai-btn-send" title="Send">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- CHIPS -->
+        <div class="ai-chips"></div>
+
+        <!-- BOTTOM BAR -->
+        <div class="ai-bottom-bar">
+          <div class="ai-thumb-wrap" style="display:none">
+            <img class="ai-thumb-img" src="" alt="">
+            <button class="ai-thumb-del">✕</button>
+          </div>
+          <div class="ai-inputbar">
+            <button class="ai-btn ai-btn-plus" title="Attach image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <input type="file" accept="image/*" class="ai-file-input" style="display:none">
+            </button>
+            <textarea class="ai-input" rows="1" placeholder="Ask anything"></textarea>
+            <button class="ai-btn ai-btn-mic" title="Use microphone">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button class="ai-btn ai-btn-send" title="Send">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <nav class="bottom-nav glass" id="rescuer-nav">
       <button class="nav-btn active" data-view="requests"><span>📡</span>Requests</button>
       <button class="nav-btn" data-view="map"><span>🗺️</span>Map</button>
+      <button class="nav-btn" data-view="ai"><span>🔬</span>AI Report</button>
       <button class="nav-btn" data-view="history"><span>📋</span>Completed</button>
       <button class="nav-btn" data-view="profile"><span>👤</span>Profile</button>
     </nav>
@@ -419,6 +541,41 @@
     </div>
   </div>
 
+  <!-- ============ RESCUE DETAILS MODAL (Rescuer) ============ -->
+  <div id="rescue-details-modal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass rescue-details-content" style="max-width: 500px; padding: 0; overflow: hidden;">
+      <div id="rescue-details-image-container" style="width: 100%; height: 250px; background: #1a1a2e; position: relative;">
+        <img id="rescue-details-image" src="" alt="Animal Image" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
+        <div id="rescue-details-no-image" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #8888aa; font-size: 1.2rem;">
+          📷 No Photo Provided
+        </div>
+        <button class="modal-close" style="position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 36px; height: 36px;" onclick="document.getElementById('rescue-details-modal').classList.remove('active')">✕</button>
+      </div>
+      <div style="padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+          <h2 style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 8px;">
+            <span id="rescue-details-severity-icon">🆘</span> Animal in Distress
+          </h2>
+          <span id="rescue-details-severity" class="badge" style="font-size: 0.9rem;">CRITICAL</span>
+        </div>
+        
+        <p id="rescue-details-description" style="color: #b8b8d4; font-size: 1.05rem; line-height: 1.5; margin-bottom: 24px;">
+          Description will appear here.
+        </p>
+        
+        <div class="asteroid-meta" style="margin-bottom: 24px; padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+          <span style="display: block; margin-bottom: 8px;">📍 <strong id="rescue-details-location">Location...</strong></span>
+          <span style="display: block;">🕐 Reported: <strong id="rescue-details-time">Time...</strong></span>
+        </div>
+        
+        <button id="rescue-details-accept-btn" class="btn-primary btn-glow magnetic-btn" style="width: 100%;">
+          <span>🚀</span> Accept & Navigate
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/gh/somanchiu/Keyless-Google-Maps-API@v7.1/mapsJavaScriptAPI.js"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -430,6 +587,7 @@
   <script src="js/rescuerMode.js"></script>
   <script src="js/healthPassport.js"></script>
   <script src="js/profileHistory.js"></script>
+  <script src="js/aiAssistant.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

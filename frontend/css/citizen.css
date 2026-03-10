@@ -8,6 +8,12 @@
   overflow: hidden;
 }
 
+.citizen-view {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
 /* Dashboard UI Layer */
 .dashboard-ui-layer {
   position: absolute;

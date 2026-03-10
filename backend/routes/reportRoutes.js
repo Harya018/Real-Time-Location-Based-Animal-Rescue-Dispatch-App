@@ -44,7 +44,7 @@ router.get('/', (req, res) => {
   const { status } = req.query;
   try {
     let query = `SELECT rr.id, rr.description, rr.severity, rr.status, rr.created_at,
-                        rr.lat, rr.lng,
+                        rr.lat, rr.lng, rr.photos,
                         u.name as citizen_name, u.phone as citizen_phone
                  FROM rescue_requests rr
                  LEFT JOIN users u ON rr.citizen_id = u.id`;

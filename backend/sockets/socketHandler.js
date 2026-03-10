@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const { calculateETA } = require('../services/etaCalculation');
 
 let io;
+const activeRescuers = new Map();
 
 function initSockets(server) {
   io = new Server(server, {
@@ -59,9 +60,12 @@ function initSockets(server) {
       socket.rescuerName = data.name;
       console.log(`[Socket] Rescuer online: ${data.name || data.rescuerId}`);
 
-      // Broadcast updated rescuer count
+      activeRescuers.set(socket.id, { id: data.rescuerId, location: data.location, name: data.name || 'Rescuer' });
+
+      // Broadcast updated rescuer count and locations
       const rescuerCount = io.sockets.adapter.rooms.get('rescuers')?.size || 0;
       io.emit('rescuer_count_update', { online: rescuerCount });
+      io.emit('active_rescuers_update', Array.from(activeRescuers.values()));
     });
 
     // Rescuer goes offline
@@ -69,8 +73,11 @@ function initSockets(server) {
       socket.leave('rescuers');
       console.log(`[Socket] Rescuer offline: ${socket.rescuerName || socket.id}`);
 
+      activeRescuers.delete(socket.id);
+
       const rescuerCount = io.sockets.adapter.rooms.get('rescuers')?.size || 0;
       io.emit('rescuer_count_update', { online: rescuerCount });
+      io.emit('active_rescuers_update', Array.from(activeRescuers.values()));
     });
 
     // Rescuer accepts a rescue request
@@ -127,6 +134,12 @@ function initSockets(server) {
 
     socket.on('disconnect', () => {
       console.log(`[Socket] Disconnected: ${socket.id}`);
+      
+      if (activeRescuers.has(socket.id)) {
+        activeRescuers.delete(socket.id);
+        io.emit('active_rescuers_update', Array.from(activeRescuers.values()));
+      }
+      
       const rescuerCount = io.sockets.adapter.rooms.get('rescuers')?.size || 0;
       io.emit('rescuer_count_update', { online: rescuerCount });
     });

@@ -60,7 +60,38 @@ db.exec(`
     status TEXT CHECK(status IN ('in_treatment', 'recovered', 'transferred')),
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  -- Seed initial dummy users --
+  INSERT OR IGNORE INTO users (id, role, name, phone) VALUES 
+    ('sys-user-1', 'citizen', 'System Reporter 1', '555-0001'),
+    ('sys-user-2', 'citizen', 'System Reporter 2', '555-0002');
 `);
+
+// Re-seed requests every restart so images and descriptions are always fresh
+try {
+  db.prepare("DELETE FROM rescue_requests WHERE id LIKE 'req-seed-%'").run();
+  
+  const insertReq = db.prepare(`INSERT INTO rescue_requests (id, citizen_id, lat, lng, description, severity, status, photos) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+
+  insertReq.run('req-seed-01', 'sys-user-1', 12.9810, 77.6000,
+    'URGENT: Stray dog struck by a speeding vehicle near the Main Park South Gate. The animal is conscious but unable to move its hind legs. Bleeding heavily from the right paw. Needs immediate medical transport to prevent further trauma and shock.',
+    'critical', 'pending',
+    '["https://images.unsplash.com/photo-1596707328574-eeb086eeb1e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"]');
+
+  insertReq.run('req-seed-02', 'sys-user-2', 12.9600, 77.5800,
+    'Small kitten trapped approximately 6 feet down in a storm drainage pipe. The meowing has been getting weaker over the last 2 hours. Cannot reach by hand. Requires a rescuer with proper extraction equipment such as tongs or a net pole.',
+    'moderate', 'pending',
+    '["https://images.unsplash.com/photo-1513245543132-31f507417b26?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"]');
+
+  insertReq.run('req-seed-03', 'sys-user-1', 12.9750, 77.6100,
+    'Pigeon with visibly drooping right wing found sitting on the sidewalk near the bus stop. Unable to fly when approached. Not bleeding, but vulnerable to predators. Needs transport to an avian rehabilitation center.',
+    'stable', 'pending',
+    '["https://images.unsplash.com/photo-1512916194211-3f2b7f5f7f1a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"]');
+    
+  console.log('[DB] Default rescue requests seeded with images.');
+} catch(err) {
+  console.error('[DB] Seed error:', err.message);
+}
 
 console.log('[DB] SQLite database ready at', DB_PATH);
 

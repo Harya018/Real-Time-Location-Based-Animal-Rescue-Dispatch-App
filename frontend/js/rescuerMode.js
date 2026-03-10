@@ -6,8 +6,8 @@ class RescuerMode {
   constructor(app) {
     this.app = app;
     this.map = null;
-    this.fullMap = null;
     this.isAvailable = false;
+    this.aiAssistant = null;
     this.rescuerLocation = null;
     this.incomingRequests = [];
     this.activeRequestId = null;
@@ -19,8 +19,10 @@ class RescuerMode {
     this.map = new MapManager('rescuer-map').init();
     this.map.locateUser().then((loc) => {
       this.rescuerLocation = loc;
+      this.map.showNearbyVets(loc);
     }).catch(() => {
       this.rescuerLocation = { lat: 12.9716, lng: 77.5946 };
+      this.map.showNearbyVets(this.rescuerLocation);
     });
 
     this.bindEvents();
@@ -83,6 +85,7 @@ class RescuerMode {
           map: 'rescuer-fullmap-view',
           history: 'rescuer-history-view',
           profile: 'rescuer-profile-view',
+          ai: 'rescuer-ai-view',
         };
 
         const viewEl = document.getElementById(viewMap[view]);
@@ -92,52 +95,41 @@ class RescuerMode {
         }
 
         // Handle map views
-        if (view === 'requests' && this.map) {
+        if (view === 'map' && this.map) {
           this.map.invalidateSize();
-        }
-        if (view === 'map') {
-          this.initFullMap();
         }
         if (view === 'history' && this.profileHistory) {
           this.profileHistory.loadHistory();
+        }
+
+        // Lazy-init AI Rescue Analyst
+        if (view === 'ai' && !this.aiAssistant && window.AIAssistant) {
+          this.aiAssistant = new AIAssistant('rescuer');
+          this.aiAssistant.init();
         }
       });
     });
   }
 
-  initFullMap() {
-    if (!this.fullMap) {
-      this.fullMap = new MapManager('rescuer-fullmap').init();
-      this.fullMap.locateUser().catch(() => {});
-    }
-    
-    // Give it a moment to init if first time
-    setTimeout(() => {
-      this.fullMap.invalidateSize();
-      // Plot current pending requests on full map
-      this.incomingRequests.forEach((req) => {
-        if (req.location) {
-          this.fullMap.addIncidentMarker(req.id, req.location.lat, req.location.lng, req.severity);
-        }
-      });
-    }, 500);
-  }
+  
 
   bindSocketEvents() {
     // Incoming rescue request (asteroid)
     this.app.socket.on('incoming_rescue_request', (data) => {
       if (!this.isAvailable) return;
 
-      this.incomingRequests.push(data);
+      const request = {
+        ...data,
+        photos: data.photo ? [data.photo] : []
+      };
+
+      this.incomingRequests.push(request);
       this.renderRequests();
       this.app.showToast(`🚨 New ${data.severity || 'moderate'} rescue request!`, 'error');
 
       // Add marker on rescuer map
       if (data.location) {
-        this.map.addIncidentMarker(data.id, data.location.lat, data.location.lng, data.severity);
-        if (this.fullMap) {
-          this.fullMap.addIncidentMarker(data.id, data.location.lat, data.location.lng, data.severity);
-        }
+        this.map.addIncidentMarker(data.id, data.location.lat, data.location.lng, data.severity, data.description, request.photos);
       }
     });
 
@@ -156,18 +148,22 @@ class RescuerMode {
       const reports = await res.json();
 
       reports.forEach((r) => {
+        let photos = [];
+        try { photos = r.photos ? JSON.parse(r.photos) : []; } catch(e) {}
+
         const request = {
           id: r.id,
           severity: r.severity || 'moderate',
           description: r.description || 'Animal in distress',
           location: r.lat && r.lng ? { lat: Number(r.lat), lng: Number(r.lng) } : null,
           timestamp: r.created_at || new Date().toISOString(),
+          photos: photos
         };
         this.incomingRequests.push(request);
 
         // Add to map
         if (request.location) {
-          this.map.addIncidentMarker(request.id, request.location.lat, request.location.lng, request.severity);
+          this.map.addIncidentMarker(request.id, request.location.lat, request.location.lng, request.severity, request.description, request.photos);
         }
       });
 
@@ -190,8 +186,11 @@ class RescuerMode {
     emptyState.style.display = 'none';
     container.innerHTML = this.incomingRequests
       .map(
-        (req) => `
+        (req) => {
+          let hasPhoto = req.photos && req.photos.length > 0;
+          return `
       <div class="request-asteroid ${req.severity || 'moderate'}" data-id="${req.id}">
+        ${hasPhoto ? `<img src="${req.photos[0]}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px 8px 0 0; margin-bottom: 10px;" alt="Animal Photo" />` : ''}
         <div class="asteroid-header">
           <h4>🆘 Animal in Distress</h4>
           <span class="asteroid-severity ${req.severity || 'moderate'}">${(req.severity || 'moderate').toUpperCase()}</span>
@@ -203,13 +202,69 @@ class RescuerMode {
             <span>🕐 ${new Date(req.timestamp).toLocaleTimeString()}</span>
           </div>
         </div>
-        <button class="accept-btn" onclick="window.app.rescuerMode.acceptRequest('${req.id}', ${req.location ? JSON.stringify(req.location).replace(/"/g, "'") : 'null'})">
-          ⬆️ Accept & Rescue
+        <button class="accept-btn" onclick="window.app.rescuerMode.showRequestDetails('${req.id}')">
+          👁️ View Details
         </button>
       </div>
     `
+        }
       )
       .join('');
+  }
+
+  showRequestDetails(reqId) {
+    const req = this.incomingRequests.find((r) => r.id === reqId);
+    if (!req) return;
+
+    // Populate modal
+    const modal = document.getElementById('rescue-details-modal');
+    const imgContainer = document.getElementById('rescue-details-image-container');
+    const imgStyle = document.getElementById('rescue-details-image');
+    const noImg = document.getElementById('rescue-details-no-image');
+    
+    // Handle image
+    if (req.photos && req.photos.length > 0 && req.photos[0]) {
+      imgStyle.src = req.photos[0];
+      imgStyle.style.display = 'block';
+      noImg.style.display = 'none';
+      imgContainer.style.height = '250px';
+    } else {
+      imgStyle.src = '';
+      imgStyle.style.display = 'none';
+      noImg.style.display = 'flex';
+      imgContainer.style.height = '150px';
+    }
+
+    // Populate text
+    document.getElementById('rescue-details-severity').textContent = (req.severity || 'moderate').toUpperCase();
+    document.getElementById('rescue-details-severity').className = `badge badge-${req.severity || 'moderate'}`;
+    document.getElementById('rescue-details-description').textContent = req.description || 'Emergency reported — no description provided';
+    
+    // Distance / Location
+    let locString = 'Location available';
+    if (req.location) {
+      if (this.rescuerLocation) {
+        // Rough distance calculation
+        const dx = req.location.lat - this.rescuerLocation.lat;
+        const dy = req.location.lng - this.rescuerLocation.lng;
+        const distKm = (Math.sqrt(dx * dx + dy * dy) * 111).toFixed(1);
+        locString = `${req.location.lat.toFixed(3)}, ${req.location.lng.toFixed(3)} (${distKm} km away)`;
+      } else {
+        locString = `${req.location.lat.toFixed(3)}, ${req.location.lng.toFixed(3)}`;
+      }
+    }
+    document.getElementById('rescue-details-location').textContent = locString;
+    document.getElementById('rescue-details-time').textContent = new Date(req.timestamp).toLocaleTimeString();
+
+    // Hook up accept button
+    const acceptBtn = document.getElementById('rescue-details-accept-btn');
+    acceptBtn.onclick = () => {
+      modal.classList.remove('active');
+      this.acceptRequest(req.id, req.location ? JSON.stringify(req.location).replace(/"/g, "'") : 'null');
+    };
+
+    // Show modal
+    modal.classList.add('active');
   }
 
   acceptRequest(requestId, incidentLocation) {
@@ -236,7 +291,15 @@ class RescuerMode {
     // Remove from incoming
     this.incomingRequests = this.incomingRequests.filter((r) => r.id !== requestId);
     this.renderRequests();
-    this.app.showToast('🚀 Request accepted! Navigate to the animal.', 'success');
+    this.app.showToast('🚀 Request accepted! Opening Google Maps Navigation...', 'success');
+
+    // Open Google Maps Directions in a new tab
+    if (this.rescuerLocation && incLoc) {
+      const origin = `${this.rescuerLocation.lat},${this.rescuerLocation.lng}`;
+      const destination = `${incLoc.lat},${incLoc.lng}`;
+      const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+      window.open(mapsUrl, '_blank');
+    }
 
     // Start simulated location updates
     this.startLocationBroadcast(requestId, incLoc);

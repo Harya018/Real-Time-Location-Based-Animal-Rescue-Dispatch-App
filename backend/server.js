@@ -12,6 +12,7 @@ const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const rescuerRoutes = require('./routes/rescuerRoutes');
 const healthPassportRoutes = require('./routes/healthPassportRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Import socket handler
 const { initSockets } = require('./sockets/socketHandler');
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/rescuers', rescuerRoutes);
 app.use('/api/health-passports', healthPassportRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Catch-all: serve frontend for any unmatched route
 app.get('/{*splat}', (req, res) => {

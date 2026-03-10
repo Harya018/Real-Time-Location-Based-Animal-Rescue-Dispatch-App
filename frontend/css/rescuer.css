@@ -1,6 +1,12 @@
 /* =================================================
    RESCUER MODE SCREEN STYLES
    ================================================= */
+.rescuer-view {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
 .rescuer-layout {
   display: flex;
   flex-direction: column;
