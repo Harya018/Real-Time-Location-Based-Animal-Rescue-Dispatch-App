@@ -34,6 +34,7 @@ db.exec(`
     photos TEXT,
     severity TEXT CHECK(severity IN ('critical', 'moderate', 'stable')),
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'en_route', 'rescued', 'fake_report')),
+    ai_report TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     accepted_by TEXT REFERENCES users(id),
     accepted_at TEXT,
@@ -66,6 +67,11 @@ db.exec(`
     ('sys-user-1', 'citizen', 'System Reporter 1', '555-0001'),
     ('sys-user-2', 'citizen', 'System Reporter 2', '555-0002');
 `);
+
+// ── Migrate existing DBs: add ai_report column if missing ──
+try {
+  db.prepare('ALTER TABLE rescue_requests ADD COLUMN ai_report TEXT').run();
+} catch (_) { /* column already exists — ignore */ }
 
 // Re-seed requests every restart so images and descriptions are always fresh
 try {

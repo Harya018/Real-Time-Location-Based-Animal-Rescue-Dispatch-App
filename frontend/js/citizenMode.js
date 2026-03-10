@@ -290,18 +290,19 @@ class CitizenMode {
     }
   }
 
-  submitSOS() {
-    const animalType = document.getElementById('sos-animal-type')?.value || 'other';
-    const isPriority = document.getElementById('sos-priority')?.checked || false;
-    const severity = isPriority ? 'critical' : (document.getElementById('sos-severity')?.value || 'moderate');
-    const description = document.getElementById('sos-description')?.value || '';
-    const isManual = document.querySelector('.loc-tab.active')?.dataset.mode === 'manual';
-    const manualAddress = document.getElementById('manual-address')?.value || '';
+  async submitSOS(aiData = null) {
+    const animalType = aiData?.animalType || document.getElementById('sos-animal-type')?.value || 'other';
+    const isPriority = aiData ? (aiData.severity === 'critical') : (document.getElementById('sos-priority')?.checked || false);
+    const severity = aiData?.severity || (isPriority ? 'critical' : (document.getElementById('sos-severity')?.value || 'moderate'));
+    const description = aiData?.description || document.getElementById('sos-description')?.value || '';
+    const isManual = aiData ? !!aiData.location?.address : (document.querySelector('.loc-tab.active')?.dataset.mode === 'manual');
+    const manualAddress = aiData?.location?.address || document.getElementById('manual-address')?.value || '';
     const photoPreview = document.getElementById('photo-preview');
+    const photos = aiData?.photos || (photoPreview?.src ? [photoPreview.src] : []);
 
-    let finalLocation = this.userLocation;
+    let finalLocation = aiData?.location || this.userLocation;
 
-    if (isManual && manualAddress) {
+    if (!aiData && isManual && manualAddress) {
       finalLocation = {
         lat: (this.userLocation?.lat || 12.9716) + (Math.random() - 0.5) * 0.01,
         lng: (this.userLocation?.lng || 77.5946) + (Math.random() - 0.5) * 0.01,
@@ -309,26 +310,50 @@ class CitizenMode {
       };
     }
 
-    if (!finalLocation) {
-      this.app.showToast('⚠️ Location not available', 'error');
-      return;
-    }
-
-    this.app.socket.triggerSOS({
+    const payload = {
       location: finalLocation,
-      citizenId: this.app.userId,
+      citizen_id: this.app.userId,
+      lat: finalLocation?.lat,
+      lng: finalLocation?.lng,
       animalType,
-      description: `${isPriority ? '[PRIORITY] ' : ''}${animalType.toUpperCase()}: ${description}`,
+      description: aiData ? description : `${isPriority ? '[PRIORITY] ' : ''}${animalType.toUpperCase()}: ${description}`,
       severity,
-      photo: photoPreview?.src || null,
+      photos,
       isManual,
       isPriority
-    });
+    };
+
+    if (!payload.lat || !payload.lng) {
+      this.app.showToast('⚠️ Location missing! Please enable GPS.', 'error');
+      return false;
+    }
 
     this.app.showToast(isPriority ? '🚨 PRIORITY SIGNAL SENT!' : '📡 Sending rescue signal...', isPriority ? 'error' : 'info');
-    
-    // Close modal on success
-    document.getElementById('sos-modal').classList.remove('active');
+
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Submission failed');
+      const data = await res.json();
+      
+      this.app.showToast('✅ Signal received! Rescuers notified.', 'success');
+      this.activeRequestId = data.id;
+      this.app.socket.trackRescuer(data.id);
+      
+      const modal = document.getElementById('sos-modal');
+      if (modal) modal.classList.remove('active');
+      
+      this.loadIncidentsFromAPI();
+      return true;
+    } catch (err) {
+      console.error('[SOS] Submission error:', err);
+      this.app.showToast('❌ Failed to send rescue signal. Check connection.', 'error');
+      return false;
+    }
   }
 
   showTrackingModal(data) {

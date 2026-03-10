@@ -14,7 +14,7 @@ html {
 
 body {
   font-family: var(--font-primary);
-  background: var(--bg-primary);
+  background: none; /* Let live-wallpaper handle the background */
   color: var(--text-primary);
   min-height: 100vh;
   overflow: hidden;
@@ -48,6 +48,25 @@ body {
 @keyframes antigravityFloat {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-8px); }
+}
+
+/* Live Wallpaper */
+.live-wallpaper {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--bg-primary);
+  pointer-events: none;
+}
+
+@keyframes floatWallpaper {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(30px, -50px) rotate(10deg); }
+  66% { transform: translate(-20px, -100px) rotate(-10deg); }
+  100% { transform: translate(0, -150px) rotate(0deg); }
 }
 
 /* Glass Morphism */

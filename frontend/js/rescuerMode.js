@@ -114,28 +114,37 @@ class RescuerMode {
   
 
   bindSocketEvents() {
-    // Incoming rescue request (asteroid)
+    // Incoming rescue request
     this.app.socket.on('incoming_rescue_request', (data) => {
       if (!this.isAvailable) return;
-
-      const request = {
-        ...data,
-        photos: data.photo ? [data.photo] : []
-      };
-
+      const request = { ...data, photos: data.photo ? [data.photo] : [], aiReport: null };
       this.incomingRequests.push(request);
       this.renderRequests();
       this.app.showToast(`🚨 New ${data.severity || 'moderate'} rescue request!`, 'error');
-
-      // Add marker on rescuer map
       if (data.location) {
         this.map.addIncidentMarker(data.id, data.location.lat, data.location.lng, data.severity, data.description, request.photos);
       }
     });
 
+    // AI report arrives (non-blocking, ~2-5s after SOS)
+    this.app.socket.on('ai_report_ready', (data) => {
+      // Update the request object in memory
+      const req = this.incomingRequests.find(r => r.id === data.requestId);
+      if (req) {
+        req.aiReport = data.aiReport;
+        // Update card in place without full re-render
+        const card = document.querySelector(`[data-id="${data.requestId}"] .ai-report-section`);
+        if (card) {
+          card.innerHTML = this._renderAIReport(data.aiReport);
+          card.style.display = 'block';
+        }
+        this.app.showToast('🤖 AI triage report ready for new request', 'success');
+      }
+    });
+
     // Request cancelled
     this.app.socket.on('request_cancelled', (data) => {
-      this.incomingRequests = this.incomingRequests.filter((r) => r.id !== data.requestId);
+      this.incomingRequests = this.incomingRequests.filter(r => r.id !== data.requestId);
       this.renderRequests();
     });
   }
@@ -143,73 +152,159 @@ class RescuerMode {
   // Load existing pending reports from API
   async loadPendingReports() {
     try {
-      const res = await fetch('/api/reports?status=pending');
+      const res = await fetch('/api/reports'); // Fetch all for stats
       if (!res.ok) throw new Error('HTTP error');
-      const reports = await res.json();
+      const allReports = await res.json();
 
-      reports.forEach((r) => {
+      this.incomingRequests = allReports.map((r) => {
         let photos = [];
         try { photos = r.photos ? JSON.parse(r.photos) : []; } catch(e) {}
 
         const request = {
           id: r.id,
+          status: r.status,
           severity: r.severity || 'moderate',
+          animalType: r.animal_type || this._inferAnimalType(r.description),
           description: r.description || 'Animal in distress',
           location: r.lat && r.lng ? { lat: Number(r.lat), lng: Number(r.lng) } : null,
           timestamp: r.created_at || new Date().toISOString(),
-          photos: photos
+          photos,
+          aiReport: r.ai_report || null,
+          citizenName: r.citizen_name || null
         };
-        this.incomingRequests.push(request);
 
-        // Add to map
-        if (request.location) {
+        if (request.status === 'pending' && request.location) {
           this.map.addIncidentMarker(request.id, request.location.lat, request.location.lng, request.severity, request.description, request.photos);
         }
+        return request;
       });
 
+      this.updateDashboardUI();
       this.renderRequests();
     } catch (err) {
-      console.log('[Rescuer] Could not fetch pending reports:', err.message);
+      console.log('[Rescuer] Could not fetch reports:', err.message);
     }
   }
 
-  renderRequests() {
-    const container = document.getElementById('incoming-requests');
-    const emptyState = document.getElementById('no-requests');
+  _inferAnimalType(desc) {
+    if (!desc) return 'other';
+    const d = desc.toLowerCase();
+    if (d.includes('dog') || d.includes('puppy')) return 'dog';
+    if (d.includes('cat') || d.includes('kitten')) return 'cat';
+    if (d.includes('bird') || d.includes('pigeon') || d.includes('eagle')) return 'bird';
+    return 'other';
+  }
 
-    if (this.incomingRequests.length === 0) {
-      container.innerHTML = '';
+  updateDashboardUI() {
+    // Update Greeting & Date
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+    const name = this.profileHistory?.userData?.name || 'Rescuer';
+    document.getElementById('rescuer-greeting').textContent = `${greeting}, ${name}`;
+    document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('en-GB', { 
+      day: 'numeric', month: 'short', year: 'numeric', weekday: 'long' 
+    });
+
+    // Calculate Stats
+    const active = this.incomingRequests.filter(r => r.status === 'pending').length;
+    const process = this.incomingRequests.filter(r => r.status === 'accepted' || r.status === 'en_route').length;
+    const finished = this.incomingRequests.filter(r => r.status === 'rescued').length;
+    const priority = this.incomingRequests.filter(r => r.severity === 'critical' && r.status === 'pending').length;
+
+    document.getElementById('stats-active').textContent = active;
+    document.getElementById('stats-process').textContent = process;
+    document.getElementById('stats-finished').textContent = finished;
+    document.getElementById('stats-priority').textContent = priority;
+
+    // Update Chart total
+    document.getElementById('total-rescues-count').textContent = this.incomingRequests.length;
+    
+    // Update Progress Bars (Mock data for demo impact)
+    const dogCount = this.incomingRequests.filter(r => r.animalType === 'dog').length;
+    const catCount = this.incomingRequests.filter(r => r.animalType === 'cat').length;
+    const birdCount = this.incomingRequests.filter(r => r.animalType === 'bird').length;
+    
+    // Update donut chart segments visually (mocking it via CSS variables logic if we had it, or just keeping the HTML static)
+  }
+
+  _renderAIReport(aiReport) {
+    if (!aiReport) return '';
+    const html = aiReport
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^## (.*)/gm,'<h5 style="margin:10px 0 4px;color:#a78bfa;">$1</h5>')
+      .replace(/^- (.*)/gm,'<li>$1</li>')
+      .replace(/\n/g,'<br>');
+    
+    return `<div class="ai-report-popup glass" style="padding:15px;max-height:300px;overflow-y:auto;font-size:.85rem;line-height:1.5;">${html}</div>`;
+  }
+
+  renderRequests() {
+    const tableBody = document.getElementById('incoming-requests-table');
+    const emptyState = document.getElementById('no-requests');
+    
+    // We only show "Active/Pending" and "In Process" in the main list
+    const visibleRequests = this.incomingRequests.filter(r => r.status !== 'rescued');
+
+    if (visibleRequests.length === 0) {
+      tableBody.innerHTML = '';
       emptyState.style.display = 'block';
       return;
     }
 
     emptyState.style.display = 'none';
-    container.innerHTML = this.incomingRequests
-      .map(
-        (req) => {
-          let hasPhoto = req.photos && req.photos.length > 0;
-          return `
-      <div class="request-asteroid ${req.severity || 'moderate'}" data-id="${req.id}">
-        ${hasPhoto ? `<img src="${req.photos[0]}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px 8px 0 0; margin-bottom: 10px;" alt="Animal Photo" />` : ''}
-        <div class="asteroid-header">
-          <h4>🆘 Animal in Distress</h4>
-          <span class="asteroid-severity ${req.severity || 'moderate'}">${(req.severity || 'moderate').toUpperCase()}</span>
-        </div>
-        <div class="asteroid-body">
-          <p>${req.description || 'Emergency reported — no description provided'}</p>
-          <div class="asteroid-meta">
-            <span>📍 ${req.location ? `${req.location.lat.toFixed(3)}, ${req.location.lng.toFixed(3)}` : 'Location available'}</span>
-            <span>🕐 ${new Date(req.timestamp).toLocaleTimeString()}</span>
-          </div>
-        </div>
-        <button class="accept-btn" onclick="window.app.rescuerMode.showRequestDetails('${req.id}')">
-          👁️ View Details
-        </button>
-      </div>
-    `
-        }
-      )
-      .join('');
+    tableBody.innerHTML = visibleRequests.map(req => {
+      const date = new Date(req.timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      const time = new Date(req.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const isPriority = req.severity === 'critical';
+      
+      const animalIcon = req.animalType === 'dog' ? '🐕' : req.animalType === 'cat' ? '🐈' : req.animalType === 'bird' ? '🐦' : '🐾';
+      
+      return `
+        <tr class="${isPriority ? 'priority' : ''}">
+          <td style="white-space:nowrap;">
+            <div style="font-weight:600;">${date}</div>
+            <div style="font-size:0.7rem;opacity:0.6;">${time}</div>
+          </td>
+          <td style="font-family:monospace;font-size:0.75rem;opacity:0.7;">#${req.id.slice(-6)}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:1.2rem;">${animalIcon}</span>
+              <span>${req.animalType.charAt(0).toUpperCase() + req.animalType.slice(1)}</span>
+            </div>
+          </td>
+          <td><span class="status-pill ${req.status}">${req.status}</span></td>
+          <td><span class="status-pill ${req.severity}">${req.severity}</span></td>
+          <td>
+            <div class="table-actions">
+              <button class="action-icon-btn" onclick="window.app.rescuerMode.showRequestDetails('${req.id}')" title="View Details">👁️</button>
+              <button class="action-icon-btn ai-btn" onclick="window.app.rescuerMode.toggleAIReport('${req.id}')" title="AI Triage Report">🤖</button>
+              <button class="action-icon-btn" onclick="window.app.rescuerMode.openMap('${req.id}')" title="Open Map">📍</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  toggleAIReport(reqId) {
+    const req = this.incomingRequests.find(r => r.id === reqId);
+    if (!req) return;
+    
+    if (!req.aiReport) {
+      this.app.showToast('🤖 AI Report is still being synthesized...', 'info');
+      return;
+    }
+
+    // Reuse details modal or show a specialized one? Let's use details modal but scroll to AI part
+    this.showRequestDetails(reqId);
+  }
+
+  openMap(reqId) {
+    const req = this.incomingRequests.find(r => r.id === reqId);
+    if (req && req.location) {
+      this.acceptRequest(req.id, req.location);
+    }
   }
 
   showRequestDetails(reqId) {
@@ -255,6 +350,30 @@ class RescuerMode {
     }
     document.getElementById('rescue-details-location').textContent = locString;
     document.getElementById('rescue-details-time').textContent = new Date(req.timestamp).toLocaleTimeString();
+
+    // AI Report Injection
+    const aiSectionId = 'rescue-details-ai-section';
+    let aiSection = document.getElementById(aiSectionId);
+    if (!aiSection) {
+      aiSection = document.createElement('div');
+      aiSection.id = aiSectionId;
+      aiSection.style.marginTop = '15px';
+      document.getElementById('rescue-details-location').parentElement.parentElement.insertBefore(aiSection, document.getElementById('rescue-details-accept-btn'));
+    }
+
+    if (req.aiReport) {
+      aiSection.innerHTML = `
+        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+          <h4 style="margin: 0 0 10px; color: #a78bfa; display: flex; align-items: center; gap: 8px;">🤖 AI Triage Report</h4>
+          <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5; max-height: 200px; overflow-y: auto;">
+            ${req.aiReport.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
+          </div>
+        </div>
+      `;
+      aiSection.style.display = 'block';
+    } else {
+      aiSection.style.display = 'none';
+    }
 
     // Hook up accept button
     const acceptBtn = document.getElementById('rescue-details-accept-btn');

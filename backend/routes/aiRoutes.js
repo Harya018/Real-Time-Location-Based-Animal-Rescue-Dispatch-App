@@ -4,9 +4,14 @@
 const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { OpenAI } = require('openai');
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 let genAI = null;
+
+// Use the user's provided key by default, falling back to process.env if available
+const OPENAI_KEY = process.env.OPENAI_API_KEY || 'sk-abcdef1234567890abcdef1234567890abcdef12';
+const openaiClient = new OpenAI({ apiKey: OPENAI_KEY });
 
 function getGenAI() {
   if (!GEMINI_KEY) return null;
@@ -21,6 +26,82 @@ function dataUrlToPart(dataUrl) {
   if (!match) return null;
   return { inlineData: { mimeType: match[1], data: match[2] } };
 }
+
+// ── POST /api/ai/report-incident ───────────────────────────────────────────
+// Uses LLM to intelligently extract incident details from conversational text
+router.post('/report-incident', async (req, res) => {
+  const { text, history = [], currentData = {} } = req.body;
+  if (!text) return res.status(400).json({ error: 'Text required' });
+
+  // System prompt to force structured JSON output
+  const systemPrompt = `You are PawGuard Dispatch AI.
+Your goal is to parse user messages to extract details for an animal rescue SOS report.
+Current gathered data: ${JSON.stringify(currentData)}
+Recent User Message: "${text}"
+
+RULES:
+1. ONLY reply with valid JSON format. Do not use markdown blocks like \`\`\`json.
+2. Structure: 
+{
+  "extractedData": { "type": "dog/cat/bird", "severity": "moderate/critical" },
+  "action": "ASK_INFO" | "REQUEST_LOCATION" | "REQUEST_PHOTOS" | "COMPLETE",
+  "reply": "Your natural language response to the user."
+}
+3. If 'type' is missing or unclear, set action="ASK_INFO" and politely ask what animal it is.
+4. If 'type' is known but location is missing (currentData.location is null/undefined), set action="REQUEST_LOCATION" and ask for their location.
+5. If 'type' and 'location' are known but 'photos' is empty, set action="REQUEST_PHOTOS" and ask for an image if possible.
+6. If the user says they have no photo or uploaded one (handled strictly), or everything is provided, set action="COMPLETE", reply "Thank you! Generating the SOS signal now...".
+7. Be concise, warm, and add an emoji.
+
+Example: If user says "a dog is injured near me", you realize 'type' = 'dog'. Since 'location' is null, you return action="REQUEST_LOCATION".`;
+
+  try {
+    const response = await openaiClient.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text }
+      ],
+      response_format: { type: "json_object" }
+    });
+    
+    // Attempt to parse JSON strictly
+    let responseText = response.choices[0].message.content.trim();
+    if (responseText.startsWith('\`\`\`json')) {
+        responseText = responseText.replace(/^\`\`\`json/m, '').replace(/\`\`\`$/m, '').trim();
+    }
+    const result = JSON.parse(responseText);
+    return res.json(result);
+
+  } catch (err) {
+    console.warn('[AI] Report-incident parsing error via OpenAI. Using Regex Fallback.', err.message);
+    
+    // Smart Fallback Regex Parser
+    let action = 'ASK_INFO';
+    let reply = "What kind of animal is it? (e.g., Dog, Cat, Bird)";
+    let extractedData = {};
+    
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('dog') || lowerText.includes('puppy')) extractedData.type = 'dog';
+    else if (lowerText.includes('cat') || lowerText.includes('kitten')) extractedData.type = 'cat';
+    else if (lowerText.includes('bird') || lowerText.includes('pigeon')) extractedData.type = 'bird';
+    
+    const type = extractedData.type || currentData.type;
+    
+    if (type && !currentData.location) {
+      action = 'REQUEST_LOCATION';
+      reply = `Got it, a ${type}. Can you share your location so I can find the nearest rescuer? 📍`;
+    } else if (type && currentData.location && (!currentData.photos || currentData.photos.length === 0)) {
+      action = 'REQUEST_PHOTOS';
+      reply = "Location received! 📍 If you can, please share an image of the animal.";
+    } else if (type && currentData.location && (lowerText.includes('no photo') || currentData.photos?.length > 0)) {
+       action = 'COMPLETE';
+       reply = "Thank you! Generating the SOS signal now...";
+    }
+    
+    return res.json({ action, reply, extractedData });
+  }
+});
 
 // ── POST /api/ai/first-aid ──────────────────────────────────────────────────
 // Citizen sends a question + optional image + conversation history

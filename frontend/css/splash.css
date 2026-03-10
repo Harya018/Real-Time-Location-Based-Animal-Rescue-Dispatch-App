@@ -168,8 +168,16 @@
 
 .role-cards {
   display: flex;
-  gap: var(--space-2xl);
+  gap: var(--space-xl);
   justify-content: center;
+  margin-top: calc(var(--space-xl) * 2);
+}
+
+@media (max-width: 600px) {
+  .role-cards {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
 }
 
 .role-card {

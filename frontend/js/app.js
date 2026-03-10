@@ -27,6 +27,11 @@ class App {
     // Initialize Anti-Gravity effects
     new AntiGravity();
 
+    // Initialize Live Background Wallpaper
+    if (window.LiveBackground) {
+      new LiveBackground('live-wallpaper');
+    }
+
     // Run splash screen
     this.runSplash();
 

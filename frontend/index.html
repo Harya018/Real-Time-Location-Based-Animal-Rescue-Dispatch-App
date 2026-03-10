@@ -20,6 +20,9 @@
   <link rel="stylesheet" href="css/ai.css" />
 </head>
 <body>
+  <!-- ============ LIVE WALLPAPER ============ -->
+  <div id="live-wallpaper" class="live-wallpaper"></div>
+
   <!-- ============ SPLASH SCREEN ============ -->
   <div id="splash-screen" class="screen active">
     <canvas id="splash-particles"></canvas>
@@ -165,10 +168,10 @@
 
         <!-- Small top bar -->
         <div class="ai-panel-header">
-          <div class="ai-header-icon">🤖</div>
+          <div class="ai-header-icon">🐶</div>
           <div>
-            <h3>PawGuard AI</h3>
-            <span class="ai-header-sub">First Aid &amp; Safety Assistant</span>
+            <h3>Animal Rescue Helper</h3>
+            <span class="ai-header-sub">Online • Ready to assist</span>
           </div>
         </div>
 
@@ -233,31 +236,134 @@
   <!-- ============ RESCUER MODE SCREEN ============ -->
   <div id="rescuer-screen" class="screen">
     <!-- REQUESTS VIEW (default) -->
-    <div id="rescuer-requests-view" class="rescuer-view active-view" style="padding: 20px; overflow-y: auto;">
-      <!-- Professional Header -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
-        <h3 class="section-title antigravity-float" style="margin: 0; font-size: 1.8rem;">
-          <span class="pulse-dot"></span>
-          Live Rescue Dashboard
-        </h3>
-        <div class="availability-toggle-container" style="position: relative; background: rgba(10, 15, 30, 0.6); padding: 10px 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center;">
-          <span style="margin-right: 15px; color: #b8b8d4; font-weight: 600;">Status:</span>
-          <label class="gravity-switch" id="availability-toggle" style="margin: 0;">
-            <input type="checkbox" id="rescuer-available" />
-            <span class="gravity-switch-slider">
-              <span class="switch-orb"></span>
-            </span>
-            <span class="switch-label" id="switch-label">Offline</span>
-          </label>
+    <div id="rescuer-requests-view" class="rescuer-view active-view" style="padding: 24px; overflow-y: auto;">
+      <!-- Dashboard Header -->
+      <div class="dashboard-header">
+        <div class="header-left">
+          <h2 id="rescuer-greeting">Good Morning, Rescuer</h2>
+          <p class="header-subtitle">Welcome to your rescue dispatch & analytics system</p>
+        </div>
+        <div class="header-right">
+          <div class="date-display" id="dashboard-date">10 Mar 2026, Tuesday</div>
+          <div class="availability-toggle-container">
+            <label class="gravity-switch" id="availability-toggle">
+              <input type="checkbox" id="rescuer-available" />
+              <span class="gravity-switch-slider"><span class="switch-orb"></span></span>
+              <span class="switch-label" id="switch-label">Offline</span>
+            </label>
+          </div>
         </div>
       </div>
 
-      <!-- Dashboard Grid -->
-      <div class="rescuer-requests-section" style="background: transparent; padding: 0; height: auto;">
-        <div id="incoming-requests" class="requests-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; padding-bottom: 100px;"></div>
-        <div id="no-requests" class="empty-state" style="margin-top: 10vh; background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.2);">
-          <span class="empty-icon antigravity-float">🛰️</span>
-          <p>Scanning for distress signals...</p>
+      <!-- Analytics Overview -->
+      <div class="analytics-row">
+        <div class="stat-card urgent">
+          <div class="stat-icon">🔔</div>
+          <div class="stat-info">
+            <span class="stat-label">Active SOS</span>
+            <h3 class="stat-value" id="stats-active">0</h3>
+          </div>
+          <div class="stat-wave"></div>
+        </div>
+        <div class="stat-card process">
+          <div class="stat-icon">⚙️</div>
+          <div class="stat-info">
+            <span class="stat-label">On Process</span>
+            <h3 class="stat-value" id="stats-process">0</h3>
+          </div>
+          <div class="stat-wave"></div>
+        </div>
+        <div class="stat-card finished">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-info">
+            <span class="stat-label">Finished</span>
+            <h3 class="stat-value" id="stats-finished">0</h3>
+          </div>
+          <div class="stat-wave"></div>
+        </div>
+        <div class="stat-card critical-alert">
+          <div class="stat-icon">🚨</div>
+          <div class="stat-info">
+            <span class="stat-label">Priority Cases</span>
+            <h3 class="stat-value" id="stats-priority">0</h3>
+          </div>
+          <div class="stat-wave"></div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Content -->
+      <div class="dashboard-main-grid">
+        <!-- Left Column: Requests List -->
+        <div class="dashboard-column list-column glass">
+          <div class="column-header">
+            <h3>Rescue Requests List</h3>
+            <div class="header-actions">
+              <button class="btn-icon-text mini"><span>🔄</span> Refresh</button>
+            </div>
+          </div>
+          <div class="requests-table-wrapper">
+            <table class="requests-table">
+              <thead>
+                <tr>
+                  <th>Report Date</th>
+                  <th>ID</th>
+                  <th>Animal Type</th>
+                  <th>Status</th>
+                  <th>Severity</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="incoming-requests-table">
+                <!-- Rows injected via JS -->
+              </tbody>
+            </table>
+            <div id="no-requests" class="empty-state-modern">
+              <span class="empty-icon">🛰️</span>
+              <p>Scanning for distress signals...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Visual Analytics -->
+        <div class="dashboard-column side-column">
+          <div class="side-card glass chart-card">
+            <h3>Rescue Breakdown</h3>
+            <div class="chart-container">
+              <!-- Simple CSS-based donut chart simulation -->
+              <div class="donut-chart-mock">
+                <div class="donut-segment dog" style="--val: 45"></div>
+                <div class="donut-segment cat" style="--val: 30"></div>
+                <div class="donut-segment bird" style="--val: 15"></div>
+                <div class="donut-segment other" style="--val: 10"></div>
+                <div class="donut-center">
+                  <span id="total-rescues-count">0</span>
+                  <small>Total</small>
+                </div>
+              </div>
+              <div class="chart-legend">
+                <div class="legend-item"><span class="dot dog"></span> Dogs</div>
+                <div class="legend-item"><span class="dot cat"></span> Cats</div>
+                <div class="legend-item"><span class="dot bird"></span> Birds</div>
+                <div class="legend-item"><span class="dot other"></span> Other</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="side-card glass progress-card">
+            <h3>Weekly Achievement</h3>
+            <div class="progress-item">
+              <div class="progress-label"><span>Dogs Rescued</span> <span>12/15</span></div>
+              <div class="progress-bar"><div class="progress-fill dog" style="width: 80%"></div></div>
+            </div>
+            <div class="progress-item">
+              <div class="progress-label"><span>Cats Rescued</span> <span>8/10</span></div>
+              <div class="progress-bar"><div class="progress-fill cat" style="width: 80%"></div></div>
+            </div>
+            <div class="progress-item">
+              <div class="progress-label"><span>Birds Rescued</span> <span>5/8</span></div>
+              <div class="progress-bar"><div class="progress-fill bird" style="width: 62%"></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -588,6 +694,7 @@
   <script src="js/healthPassport.js"></script>
   <script src="js/profileHistory.js"></script>
   <script src="js/aiAssistant.js"></script>
+  <script src="js/liveBackground.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

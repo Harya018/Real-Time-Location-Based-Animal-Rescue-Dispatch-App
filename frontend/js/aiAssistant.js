@@ -1,8 +1,3 @@
-// =================================================
-// AI ASSISTANT — PawGuard ChatGPT-Style Chat
-// Centered input before conversation, bottom bar after
-// =================================================
-
 class AIAssistant {
   constructor(mode = 'citizen') {
     this.mode         = mode;
@@ -13,6 +8,16 @@ class AIAssistant {
     this.isLoading    = false;
     this.hasChatted   = false;
     this.panelId      = mode === 'citizen' ? 'citizen-ai-panel' : 'rescuer-ai-panel';
+    
+    // Reporting State Machine
+    this.reportingState = 'IDLE'; // IDLE, TYPE, LOCATION, PHOTOS, CONFIRM
+    this.reportData = {
+      type: 'other',
+      severity: 'moderate',
+      description: '',
+      location: null,
+      photos: []
+    };
   }
 
   init() {
@@ -24,16 +29,19 @@ class AIAssistant {
     this.bottomBar  = this.panel.querySelector('.ai-bottom-bar');
     this.thumbWrap  = this.panel.querySelector('.ai-bottom-bar .ai-thumb-wrap');
     this.thumbImg   = this.panel.querySelector('.ai-thumb-img');
-    this.thumbDel   = this.panel.querySelector('.ai-thumb-del');
+    this.thumbDel   = this.panel.querySelector('.ai-bottom-bar .ai-thumb-del');
 
-    // There are TWO inputbars (center + bottom). Bind BOTH.
     this.allInputbars = this.panel.querySelectorAll('.ai-inputbar');
     this._bindAllBars();
     this._initVoice();
     this._populateChips();
+
+    // Initial greeting for citizen mode
+    if (this.mode === 'citizen') {
+      setTimeout(() => this._addBotBubble("Hi there! How can I assist you today? 🐶"), 500);
+    }
   }
 
-  // ── Bind both input bars ──────────────────────────────
   _bindAllBars() {
     this.allInputbars.forEach(bar => {
       const inputEl  = bar.querySelector('.ai-input');
@@ -42,22 +50,17 @@ class AIAssistant {
       const fileIn   = bar.querySelector('.ai-file-input');
       const micBtn   = bar.querySelector('.ai-btn-mic');
 
-      // Send
       sendBtn?.addEventListener('click', () => this._send());
       inputEl?.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._send(); }
       });
       inputEl?.addEventListener('input', () => {
-        // Auto-grow
         inputEl.style.height = 'auto';
         inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + 'px';
-        // Sync text across both bars
         this._syncInputs(inputEl.value);
-        // Toggle send button active state
         this._updateSendReady(inputEl.value.trim());
       });
 
-      // + attach
       plusBtn?.addEventListener('click', () => fileIn?.click());
       fileIn?.addEventListener('change', e => {
         const file = e.target.files[0];
@@ -67,33 +70,30 @@ class AIAssistant {
           this.pendingImage = ev.target.result;
           if (this.thumbImg) this.thumbImg.src = this.pendingImage;
           if (this.thumbWrap) this.thumbWrap.style.display = 'flex';
+          this._updateSendReady('image');
         };
         reader.readAsDataURL(file);
       });
 
-      // mic
       micBtn?.addEventListener('click', () => this._toggleVoice());
     });
 
-    // Thumb delete
     this.thumbDel?.addEventListener('click', () => this._clearImage());
 
-    // Chips click
     this.chips?.addEventListener('click', e => {
-      const chip = e.target.closest('.ai-chip');
+      const chip = e.target.closest('.ai-chip, .ai-pill-btn');
       if (!chip) return;
-      this._setInputAll(chip.dataset.q || chip.textContent.trim());
+      const text = chip.dataset.q || chip.textContent.trim();
+      this._setInputAll(text);
       this._send();
     });
   }
 
-  // Get value from whichever input currently has text (prefer active bar)
   _getActiveInput() {
     for (const bar of this.allInputbars) {
       const el = bar.querySelector('.ai-input');
       if (el && el.value.trim()) return el;
     }
-    // Return first available
     return this.allInputbars[0]?.querySelector('.ai-input') || null;
   }
 
@@ -107,7 +107,7 @@ class AIAssistant {
 
   _syncInputs(value) {
     this.allInputbars.forEach(bar => {
-      const el = bar.querySelector('.ai-input');
+      const el = bar.querySelector('.ai-inputbar .ai-input');
       if (el && el.value !== value) el.value = value;
     });
   }
@@ -123,7 +123,8 @@ class AIAssistant {
   _updateSendReady(value) {
     const hasContent = value.length > 0 || !!this.pendingImage;
     this.allInputbars.forEach(bar => {
-      bar.querySelector('.ai-btn-send')?.classList.toggle('send-ready', hasContent);
+      const btn = bar.querySelector('.ai-btn-send');
+      if (btn) btn.style.opacity = hasContent ? '1' : '0.5';
     });
   }
 
@@ -135,133 +136,215 @@ class AIAssistant {
     this._updateSendReady('');
   }
 
-  // ── Voice ─────────────────────────────────────────────
   _initVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      this.panel.querySelectorAll('.ai-btn-mic').forEach(b => b.style.opacity = '0.3');
-      return;
-    }
+    if (!SR) return;
     this.recognition = new SR();
     this.recognition.lang = 'en-US';
-    this.recognition.interimResults = true;
-
     this.recognition.onresult = e => {
       const text = Array.from(e.results).map(r => r[0].transcript).join('');
       this._setInputAll(text);
     };
-
     this.recognition.onend = () => {
       this.listening = false;
       this._updateMicUI();
-      const input = this._getActiveInput();
-      if (input?.value?.trim()) this._send();
-    };
-
-    this.recognition.onerror = () => {
-      this.listening = false;
-      this._updateMicUI();
+      if (this._getActiveInput()?.value?.trim()) this._send();
     };
   }
 
   _toggleVoice() {
     if (!this.recognition) return;
-    if (this.listening) {
-      this.recognition.stop();
-    } else {
-      this.recognition.start();
-      this.listening = true;
-      this._updateMicUI();
-    }
+    if (this.listening) this.recognition.stop();
+    else { this.recognition.start(); this.listening = true; this._updateMicUI(); }
   }
 
   _updateMicUI() {
-    this.panel.querySelectorAll('.ai-btn-mic').forEach(btn => {
-      btn.classList.toggle('mic-active', this.listening);
-    });
+    this.panel.querySelectorAll('.ai-btn-mic').forEach(btn => btn.classList.toggle('mic-active', this.listening));
   }
 
-  // ── Chips ─────────────────────────────────────────────
   _populateChips() {
     const chipsData = {
       citizen: [
-        { q: 'What should I do for an injured dog?',      label: '🐕 Injured dog' },
-        { q: 'How do I safely approach a stray cat?',     label: '🐈 Stray cat' },
-        { q: 'What are signs of shock in an animal?',     label: '⚡ Signs of shock' },
-        { q: 'How do I help an injured bird?',             label: '🐦 Injured bird' },
+        { q: 'I found an injured animal', label: '🚑 Report an Animal' },
+        { q: 'Found a Pet', label: '🐾 Found a Pet' },
+        { q: 'Get Assistance', label: '🆘 Get Assistance' },
       ],
       rescuer: [
-        { q: 'Generate a report for a dog with broken leg', label: '📋 Dog injury' },
-        { q: 'Cat entrapment in drainage — assess severity', label: '🐱 Cat in drain' },
-        { q: 'What transport protocol for injured wildlife?', label: '🚑 Transport' },
-        { q: 'What equipment should I bring?',               label: '🛠️ Equipment' },
+        { q: 'Generate summary', label: '📋 Summary' },
+        { q: 'Equipment needed', label: '🛠️ Equipment' },
       ]
     };
-
     if (this.chips) {
       this.chips.innerHTML = (chipsData[this.mode] || [])
-        .map(c => `<button class="ai-chip" data-q="${c.q}">${c.label}</button>`)
+        .map(c => `<button class="ai-pill-btn" data-q="${c.q}">${c.label}</button>`)
         .join('');
     }
   }
 
-  // ── Send ──────────────────────────────────────────────
   async _send() {
     if (this.isLoading) return;
-
     const inputEl = this._getActiveInput();
     const text    = inputEl?.value?.trim() || '';
     const image   = this.pendingImage;
-
     if (!text && !image) return;
 
-    // Switch to chatting mode on first message
     if (!this.hasChatted) {
       this.hasChatted = true;
       this.panel.classList.add('chatting');
     }
 
+    this._bubble('user', text, image);
+    this.history.push({ role: 'user', text: text || '', imageDataUrl: image || null });
     this._clearAllInputs();
     this._clearImage();
 
-    this._bubble('user', text, image);
-    this.history.push({ role: 'user', text: text || '', imageDataUrl: image || null });
+    // INTERCEPT FOR REPORTING FLOW
+    if (this.mode === 'citizen' && (text.toLowerCase().includes('report') || text.toLowerCase().includes('injured') || this.reportingState !== 'IDLE')) {
+      this._handleReportingFlow(text, image);
+      return;
+    }
 
     this.isLoading = true;
     const typingEl = this._showTyping();
 
     try {
       const endpoint = this.mode === 'citizen' ? '/api/ai/first-aid' : '/api/ai/analyze';
-      const payload  = this.mode === 'citizen'
-        ? { question: text || 'Analyze this image', imageDataUrl: image, history: this.history.slice(-10) }
-        : { description: text || 'Analyze this image', imageDataUrl: image, history: this.history.slice(-10) };
+      const payload  = { question: text || 'Analyze this image', imageDataUrl: image, history: this.history.slice(-10) };
+      if (this.mode === 'rescuer') payload.description = text;
 
       const res = await fetch(endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload)
       });
-
       typingEl.remove();
-
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data  = await res.json();
-      const reply = (this.mode === 'citizen' ? data.answer : data.report)
-                    || 'Sorry, I could not process that. Please try again.';
-
+      const reply = (this.mode === 'citizen' ? data.answer : data.report) || 'Processing...';
       await this._streamBubble(reply);
       this.history.push({ role: 'model', text: reply });
+    } catch (err) {
+      typingEl.remove();
+      await this._streamBubble('⚠️ Connection issue. Still here to help!');
+    }
+    this.isLoading = false;
+  }
 
-      if (data.simulated) {
-        this._note('💡 Demo mode — add a Gemini API key to backend/.env for live AI');
+  // ── Conversational Reporting Logic ────────────────────
+  async _handleReportingFlow(text, image) {
+    this.isLoading = true;
+    const typingEl = this._showTyping();
+    await this._sleep(800);
+
+    try {
+      if (image && this.reportingState === 'PHOTOS') {
+        this.reportData.photos = this.reportData.photos || [];
+        this.reportData.photos.push(image);
+      }
+
+      const payload = { 
+        text: text || "User uploaded an image.", 
+        history: this.history.slice(-10), 
+        currentData: this.reportData 
+      };
+
+      const res = await fetch('/api/ai/report-incident', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      typingEl.remove();
+
+      if (!res.ok) throw new Error('Failed to parse incident');
+      
+      const data = await res.json();
+      Object.assign(this.reportData, data.extractedData || {});
+
+      if (data.action === 'REQUEST_LOCATION') {
+        this.reportingState = 'LOCATION';
+        await this._addBotBubble(data.reply);
+        this._showLocationButton();
+      } else if (data.action === 'REQUEST_PHOTOS') {
+        this.reportingState = 'PHOTOS';
+        await this._addBotBubble(data.reply);
+        this._showQuickOptions(["I don't have a photo", "Upload Photo"]);
+      } else if (data.action === 'COMPLETE') {
+        this.reportingState = 'CONFIRM';
+        await this._addBotBubble(data.reply || "Thank you! Generating the SOS signal now...");
+        this._finalizeReport();
+      } else {
+        // ASK_INFO or any other state
+        this.reportingState = 'TYPE';
+        await this._addBotBubble(data.reply);
+        if (data.reply.toLowerCase().includes('what kind')) {
+           this._showQuickOptions(['🐕 Dog', '🐈 Cat', '🐦 Bird', '🐾 Other']);
+        }
       }
     } catch (err) {
       typingEl.remove();
-      await this._streamBubble('⚠️ Network error. Please try again.');
-      console.error('[AI]', err);
+      console.error(err);
+      await this._addBotBubble("⚠️ Connection issue processing report. Please use the main SOS button.");
     }
 
     this.isLoading = false;
+  }
+
+  async _finalizeReport() {
+    try {
+      // Use existing submitSOS logic from citizenMode
+      if (window.app?.citizenMode) {
+        const success = await window.app.citizenMode.submitSOS({
+          animalType: this.reportData.type,
+          severity: this.reportData.severity,
+          description: this.reportData.description,
+          location: this.reportData.location,
+          photos: this.reportData.photos
+        });
+
+        if (success) {
+          await this._addBotBubble("✅ **Rescue Signal Sent!** A nearby rescuer has been notified.");
+          await this._addBotBubble("While you wait, please keep the animal calm. Do not attempt to move it if it has spinal injuries. 🩹");
+        }
+      }
+    } catch (e) {
+      await this._addBotBubble("⚠️ Failed to send signal. Please try using the main SOS button.");
+    }
+    this.reportingState = 'IDLE';
+  }
+
+  _addBotBubble(text) {
+    const b = this._bubble('ai', text);
+    this.history.push({ role: 'model', text });
+    return b;
+  }
+
+  _showQuickOptions(options) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-chips';
+    wrap.style.marginTop = '8px';
+    wrap.innerHTML = options.map(o => `<button class="ai-pill-btn">${o}</button>`).join('');
+    this.feed?.appendChild(wrap);
+    this._scroll();
+  }
+
+  _showLocationButton() {
+    const btn = document.createElement('button');
+    btn.className = 'ai-action-btn';
+    btn.innerHTML = '📍 Share My Location';
+    btn.onclick = () => {
+      btn.innerHTML = '⌛ Fetching Location...';
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          this.reportData.location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          btn.innerHTML = '✅ Location Shared';
+          btn.disabled = true;
+          this._bubble('user', 'Shared my location');
+          this._handleReportingFlow('shared');
+        });
+      }
+    };
+    this.feed?.appendChild(btn);
+    this._scroll();
   }
 
   // ── Render helpers ────────────────────────────────────
@@ -269,12 +352,8 @@ class AIAssistant {
     const wrap = document.createElement('div');
     wrap.className = `ai-row ai-row-${role}`;
 
-    const imgTag = imageUrl
-      ? `<img src="${imageUrl}" class="ai-bubble-img" alt="uploaded">`
-      : '';
-    const txtTag = text
-      ? `<div class="ai-bubble-text">${role === 'ai' ? this._md(text) : this._esc(text)}</div>`
-      : '';
+    const imgTag = imageUrl ? `<img src="${imageUrl}" class="ai-bubble-img">` : '';
+    const txtTag = text ? `<div class="ai-bubble-text">${role === 'ai' ? this._md(text) : this._esc(text)}</div>` : '';
 
     if (role === 'ai') {
       wrap.innerHTML = `<div class="ai-av ai-av-bot">🐾</div><div class="ai-bubble ai-bubble-bot">${imgTag}${txtTag}</div>`;
@@ -288,25 +367,15 @@ class AIAssistant {
   }
 
   async _streamBubble(fullText) {
-    const wrap   = document.createElement('div');
-    wrap.className = 'ai-row ai-row-ai';
-    const inner  = document.createElement('div');
-    inner.className = 'ai-bubble-text';
-    const bubble = document.createElement('div');
-    bubble.className = 'ai-bubble ai-bubble-bot';
-    bubble.appendChild(inner);
-    wrap.innerHTML = `<div class="ai-av ai-av-bot">🐾</div>`;
-    wrap.appendChild(bubble);
-    this.feed?.appendChild(wrap);
-    this._scroll();
-
+    const wrap = this._bubble('ai', '');
+    const inner = wrap.querySelector('.ai-bubble-text');
     const tokens = fullText.split(/(\s+)/);
     let acc = '';
     for (const tok of tokens) {
       acc += tok;
       inner.innerHTML = this._md(acc);
       this._scroll();
-      await this._sleep(12);
+      await this._sleep(15);
     }
   }
 
@@ -319,28 +388,8 @@ class AIAssistant {
     return el;
   }
 
-  _note(text) {
-    const el = document.createElement('div');
-    el.className = 'ai-note';
-    el.textContent = text;
-    this.feed?.appendChild(el);
-    this._scroll();
-  }
-
-  // ── Markdown ──────────────────────────────────────────
   _md(raw) {
-    return raw
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/```([\s\S]*?)```/g,'<pre class="ai-pre"><code>$1</code></pre>')
-      .replace(/`([^`]+)`/g,'<code class="ai-code-inline">$1</code>')
-      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g,'<em>$1</em>')
-      .replace(/^## (.*)/gm,'<h4 class="ai-h">$1</h4>')
-      .replace(/^### (.*)/gm,'<h5 class="ai-h5">$1</h5>')
-      .replace(/^[-•] (.*)/gm,'<li>$1</li>')
-      .replace(/(<li>[\s\S]*?<\/li>)/g, m => `<ul class="ai-ul">${m}</ul>`)
-      .replace(/\n\n/g,'<br><br>')
-      .replace(/\n/g,'<br>');
+    return raw.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
   }
 
   _esc(t) {
@@ -349,22 +398,5 @@ class AIAssistant {
 
   _scroll() { if (this.feed) this.feed.scrollTop = this.feed.scrollHeight; }
   _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-  // rescuerMode.js hook
-  async analyzeRequest(desc, imgUrl, type = 'animal', sev = 'moderate') {
-    if (this.mode !== 'rescuer') return;
-    this._setInputAll(`Generate a triage report for a ${sev} ${type} incident: ${desc}`);
-    if (imgUrl?.startsWith('http')) {
-      try {
-        const res = await fetch(imgUrl);
-        const blob = await res.blob();
-        this.pendingImage = await new Promise(r => { const fr = new FileReader(); fr.onloadend = () => r(fr.result); fr.readAsDataURL(blob); });
-        if (this.thumbImg)  this.thumbImg.src = this.pendingImage;
-        if (this.thumbWrap) this.thumbWrap.style.display = 'flex';
-      } catch {}
-    }
-    await this._send();
-  }
 }
-
 window.AIAssistant = AIAssistant;

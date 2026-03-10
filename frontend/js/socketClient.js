@@ -38,6 +38,8 @@ class SocketClient {
       'request_timeout',
       'nearby_rescuers',
       'rescuer_count_update',
+      'ai_report_ready',
+      'active_rescuers_update',
     ];
 
     serverEvents.forEach((event) => {

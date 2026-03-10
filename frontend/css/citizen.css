@@ -394,3 +394,43 @@
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
+
+/* =================================================
+   MOBILE RESPONSIVENESS (CITIZEN)
+   ================================================= */
+@media (max-width: 600px) {
+  .stats-bar {
+    width: 90%;
+    flex-wrap: wrap;
+    justify-content: center;
+    top: var(--space-sm);
+  }
+  
+  .incident-cards-container {
+    top: 120px;
+    right: 5%;
+    width: 90%;
+    max-height: 40vh;
+  }
+  
+  .sos-container {
+    bottom: 80px; 
+  }
+  
+  .sos-button {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .sos-ripple {
+    width: 70px;
+    height: 70px;
+  }
+  @keyframes sosRipple {
+    0% { width: 70px; height: 70px; opacity: 0.6; }
+    100% { width: 140px; height: 140px; opacity: 0; }
+  }
+
+  .nav-btn span { font-size: 1rem; }
+  .nav-btn { font-size: 0.55rem; padding: 4px; }
+}

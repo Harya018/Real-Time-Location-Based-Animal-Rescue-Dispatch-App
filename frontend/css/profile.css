@@ -9,7 +9,7 @@
   padding-bottom: 80px;
   height: 100vh;
   overflow-y: auto;
-  background: var(--bg-primary);
+  background: transparent;
 }
 
 .panel-title {
@@ -180,7 +180,8 @@
   align-items: flex-start;
   gap: var(--space-md);
   padding: var(--space-md);
-  background: var(--bg-secondary);
+  background: rgba(17, 24, 39, 0.4);
+  backdrop-filter: blur(10px);
   border-radius: var(--radius-md);
   border: 1px solid rgba(255,255,255,0.06);
   transition: var(--transition-normal);
