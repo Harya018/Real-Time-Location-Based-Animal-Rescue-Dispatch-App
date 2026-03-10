@@ -10,7 +10,7 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 let genAI = null;
 
 // Use the user's provided key by default, falling back to process.env if available
-const OPENAI_KEY = process.env.OPENAI_API_KEY || 'sk-abcdef1234567890abcdef1234567890abcdef12';
+const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 const openaiClient = new OpenAI({ apiKey: OPENAI_KEY });
 
 function getGenAI() {
